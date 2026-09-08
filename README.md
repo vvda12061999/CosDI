@@ -219,8 +219,7 @@ cosdi.zip                     ready to import
 </p>
 
 <p align="center">
-  <!-- Replace YOUR_BUY_ME_A_COFFEE_URL with your real link -->
-  <a href="YOUR_BUY_ME_A_COFFEE_URL">
+  <a href="https://buymeacoffee.com/vvda1206">
     <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50">
   </a>
 </p>
