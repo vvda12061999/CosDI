@@ -3,14 +3,17 @@
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
+const { generateTokens } = require('./lib/token-codegen.js');
 
 const PORT = 38477;
 const RUNTIME_DIR = path.join(__dirname, 'runtime');
 const FOLDER_META = path.join(__dirname, 'static', 'CosDI.folder.meta');
+const TOKEN_DEBOUNCE_MS = 400;
 
 let snapshot = { scopes: [], collectedAt: 0, empty: true };
 let server = null;
 let lastLogKey = '';
+let tokenTimer = null;
 
 function applyCors(req, res) {
     const origin = req.headers.origin || '*';
@@ -199,6 +202,43 @@ function readExtensionVersion() {
     }
 }
 
+/** Writes the token for every `@createToken` interface under assets/. */
+function generateProjectTokens(quiet) {
+    let result;
+    try {
+        result = generateTokens({ roots: [projectAssetsDir()] });
+    } catch (error) {
+        console.error('[CosDI] Interface token generation failed', error);
+        return null;
+    }
+    for (const warning of result.warnings) {
+        console.warn('[CosDI] ' + warning);
+    }
+    if (result.changed.length) {
+        console.log('[CosDI] Wrote interface tokens in ' + result.changed.length + ' file(s)');
+    } else if (!quiet) {
+        console.log('[CosDI] Interface tokens are up to date (' + result.tokens + ' token' + (result.tokens === 1 ? '' : 's') + ')');
+    }
+    return result;
+}
+
+function scheduleTokenGeneration(info) {
+    const file = info && (info.file || info.path || '');
+    if (typeof file !== 'string' || !file.endsWith('.ts')) {
+        return;
+    }
+    if (file.indexOf(path.join('assets', 'CosDI')) >= 0) {
+        return;
+    }
+    if (tokenTimer) {
+        clearTimeout(tokenTimer);
+    }
+    tokenTimer = setTimeout(() => {
+        tokenTimer = null;
+        generateProjectTokens(true);
+    }, TOKEN_DEBOUNCE_MS);
+}
+
 function refreshAssets() {
     Promise.resolve()
         .then(() => Editor.Message.request('asset-db', 'refresh-asset', 'db://assets/CosDI'))
@@ -216,15 +256,26 @@ exports.methods = {
     installRuntime() {
         return installRuntime(true);
     },
+    generateTokens() {
+        return generateProjectTokens(false);
+    },
+    onAssetChange(_uuid, info) {
+        scheduleTokenGeneration(info);
+    },
 };
 
 exports.load = function () {
     installRuntime(false);
+    generateProjectTokens(true);
     startServer();
     console.log('[CosDI] editor extension loaded');
 };
 
 exports.unload = function () {
+    if (tokenTimer) {
+        clearTimeout(tokenTimer);
+        tokenTimer = null;
+    }
     stopServer();
     try {
         Editor.Panel.close('cosdi');

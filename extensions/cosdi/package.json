@@ -28,6 +28,7 @@
   "files": [
     "bin",
     "i18n",
+    "lib",
     "main.js",
     "package.json",
     "panels",
@@ -72,6 +73,11 @@
       },
       {
         "path": "CosDI",
+        "label": "Generate Interface Tokens",
+        "message": "generate-tokens"
+      },
+      {
+        "path": "CosDI",
         "label": "Install Runtime into Project",
         "message": "install-runtime"
       }
@@ -85,6 +91,15 @@
       },
       "install-runtime": {
         "methods": ["installRuntime"]
+      },
+      "generate-tokens": {
+        "methods": ["generateTokens"]
+      },
+      "asset-db:asset-add": {
+        "methods": ["onAssetChange"]
+      },
+      "asset-db:asset-change": {
+        "methods": ["onAssetChange"]
       }
     },
     "scene": {

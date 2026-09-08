@@ -21,8 +21,28 @@ function copyDir(src, dest) {
 }
 
 const command = process.argv[2] || 'install';
+
+if (command === 'tokens') {
+    const { generateTokens } = require('../lib/token-codegen.js');
+    const check = process.argv.indexOf('--check') >= 0;
+    const result = generateTokens({ roots: [path.join(process.cwd(), 'assets')], check });
+    for (const warning of result.warnings) {
+        console.warn('[CosDI] ' + warning);
+    }
+    for (const file of result.changed) {
+        console.log('[CosDI] ' + (check ? 'stale' : 'wrote') + ' ' + path.relative(process.cwd(), file));
+    }
+    if (check && result.changed.length) {
+        console.error('[CosDI] Interface tokens are out of date. Run: npx cosdi tokens');
+        process.exit(1);
+    }
+    console.log('[CosDI] ' + result.tokens + ' token(s) in ' + result.scanned + ' file(s)');
+    process.exit(0);
+}
+
 if (command !== 'install') {
     console.log('Usage: npx cosdi install');
+    console.log('       npx cosdi tokens [--check]');
     console.log('Run this from your Cocos Creator project root.');
     process.exit(command === 'help' || command === '--help' ? 0 : 1);
 }
