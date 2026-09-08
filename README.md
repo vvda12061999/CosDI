@@ -120,13 +120,27 @@ Drop a `cosdi.codegen.json` in the project root to control where the generator l
 
 `roots` and `exclude` keep the scan off the rest of the project. A save only revisits the file you saved, so hook cost does not grow with project size; the menu item and the CLI still sweep everything.
 
-`mode: "file"` stops the generator writing into your sources. Tokens go to `out` instead, as one module that exports each interface type and its token under the same name:
+`mode` decides where the generated code goes:
 
-```ts
-import { IExampleService } from './Tokens.generated';
+| Mode | Where tokens land | Import as |
+| --- | --- | --- |
+| `inline` (default) | Next to each interface, as a `// cosdi:token` line | The file that declares the interface |
+| `file` | One module at `out`, which must sit under `assets/` | `./Tokens.generated` |
+| `package` | A local package outside `assets/`, `node_modules/<packageName>` by default | `'cosdi-tokens'` |
+
+Use `package` to keep generated code out of the assets folder entirely:
+
+```json
+{ "mode": "package", "packageName": "game-tokens" }
 ```
 
-In this mode, the file that declares the interface cannot import its own token — TypeScript rejects an import that collides with a local declaration — so keep tagged interfaces in their own files and import tokens where you register and inject them. Switching to `file` clears any inline tokens the generator wrote earlier.
+```ts
+import { IExampleService } from 'game-tokens';
+```
+
+Creator resolves bare specifiers with the Node algorithm, which is how the `cosdi` package itself is imported, so a generated package works the same way. Two things to know: `npm install` wipes `node_modules`, and the generator rewrites the package on the next save or editor load — run `npx cosdi tokens` if you need it back sooner. A path alias in `tsconfig.json` is not an alternative, because Creator does not read `tsconfig.json` when it compiles.
+
+Both `file` and `package` mode export the interface type and its token under one name, and never write into your sources. In exchange, the file that declares an interface cannot import its own token — TypeScript rejects an import that collides with a local declaration — so keep tagged interfaces in their own files and import tokens where you register and inject them. Switching modes clears the tokens the previous mode wrote.
 
 `generateOnSave: false` turns off the save hook and leaves generation to **CosDI → Generate Interface Tokens** and the CLI.
 
