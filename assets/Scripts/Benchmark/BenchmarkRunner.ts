@@ -4,7 +4,6 @@ import {
     BenchmarkResult,
     getBenchmarkCases,
     measure,
-    N,
 } from './ContainerPerformanceTest';
 import { CosDISettings } from 'db://assets/CosDI/Runtime/index';
 
@@ -35,7 +34,7 @@ export class CosDIBenchmarkRunner extends Component {
         CosDISettings.enableDiagnostics = false;
         const results: BenchmarkResult[] = [];
         try {
-            showOverlay(`CosDI benchmark starting (N=${N})...\nChecking that the VContainer fixture graph resolves...`);
+            showOverlay('CosDI stress benchmark starting...\nChecking VContainer + deep/wide/gameplay graphs...');
             assertGraphResolves();
             const cases = getBenchmarkCases();
             for (let i = 0; i < cases.length; i++) {
@@ -49,6 +48,7 @@ export class CosDIBenchmarkRunner extends Component {
             }
             const table = formatTable(results);
             console.log(table);
+            console.log(formatRatios(results));
             console.table(results.map((result) => ({
                 Case: result.name,
                 Group: result.sampleGroup,
@@ -59,7 +59,7 @@ export class CosDIBenchmarkRunner extends Component {
                 'ns/op': Math.round(result.nsPerResolve),
                 'Heap KB': result.heapDeltaKb == null ? '-' : Math.round(result.heapDeltaKb),
             })));
-            showOverlay(table);
+            showOverlay(table + '\n\n' + formatRatios(results));
             return results;
         } catch (error) {
             const message = '[CosDI] Benchmark failed: ' + (error instanceof Error ? error.message : String(error));
@@ -75,14 +75,15 @@ export class CosDIBenchmarkRunner extends Component {
 
 function formatTable(results: BenchmarkResult[]): string {
     const lines = [
-        `CosDI benchmark (same cases as VContainer, N=${N}, 10 samples, 3 warmup)`,
-        pad('Case', 24) + pad('Group', 22) + pad('Median', 12) + pad('Mean', 12) + pad('Min', 12) + pad('Max', 12) + pad('ns/op', 10) + pad('Heap', 10),
-        '-'.repeat(114),
+        'CosDI stress benchmark (VContainer cases + deep/wide/gameplay graphs, 10 samples, 3 warmup)',
+        pad('Case', 26) + pad('Group', 22) + pad('N', 8) + pad('Median', 12) + pad('Mean', 12) + pad('Min', 12) + pad('Max', 12) + pad('ns/op', 10) + pad('Heap', 10),
+        '-'.repeat(124),
     ];
     for (const result of results) {
         lines.push(
-            pad(result.name, 24)
+            pad(result.name, 26)
             + pad(result.sampleGroup, 22)
+            + pad(String(result.n), 8)
             + pad(result.medianMs.toFixed(2) + ' ms', 12)
             + pad(result.meanMs.toFixed(2) + ' ms', 12)
             + pad(result.minMs.toFixed(2) + ' ms', 12)
@@ -93,10 +94,25 @@ function formatTable(results: BenchmarkResult[]): string {
     }
     if (results.length) {
         lines.push('');
-        lines.push('ns/op is nanoseconds per resolve (or per container build for ContainerBuildComplex).');
-        lines.push('Direct new is the theoretical floor: no container lookup, just `new`.');
-        lines.push('Diagnostics is off except the CosDI + diagnostics row.');
+        lines.push('ns/op is nanoseconds per top-level resolve (or per build / scope open).');
+        lines.push('Direct new is the theoretical floor. Heap ignores GC drops (negative samples).');
     }
+    return lines.join('\n');
+}
+
+function formatRatios(results: BenchmarkResult[]): string {
+    const lines = ['CosDI vs Direct new:'];
+    const names = ['ResolveCombined', 'ResolveComplex', 'ResolveDeep12', 'ResolveWide16', 'SpawnEnemy'];
+    for (const name of names) {
+        const cosdi = results.find((result) => result.name === name && result.sampleGroup === 'CosDI');
+        const direct = results.find((result) => result.name === name && result.sampleGroup === 'Direct new');
+        if (!cosdi || !direct || direct.nsPerResolve <= 0) {
+            continue;
+        }
+        const ratio = cosdi.nsPerResolve / direct.nsPerResolve;
+        lines.push(`  ${name}: ${ratio.toFixed(1)}x  (${Math.round(cosdi.nsPerResolve)} ns vs ${Math.round(direct.nsPerResolve)} ns)`);
+    }
+    lines.push('Rule of thumb: singleton/nested lookup should stay cheap. SpawnEnemy under ~2 µs is fine for hundreds of spawns per frame.');
     return lines.join('\n');
 }
 

@@ -1,5 +1,5 @@
 import {
-    ContainerBuilder, CosDISettings, DiagnosticsContext, IContainerBuilder, IObjectResolver, Lifetime,
+    ContainerBuilder, CosDISettings, DiagnosticsContext, IContainerBuilder, IObjectResolver, IScopedObjectResolver, Lifetime,
 } from 'db://assets/CosDI/Runtime/index';
 import {
     Combined1, Combined2, Combined3,
@@ -13,9 +13,18 @@ import {
     SubObjectA, SubObjectB, SubObjectC, SubObjectOne, SubObjectThree, SubObjectTwo,
     ThirdService, Transient1, Transient2, Transient3,
 } from './Fixtures';
+import {
+    AI, Blackboard, Clock, createDeepDirect, createEnemyDirect, createWideDirect, Damage,
+    deepTokens, deepTypes, Enemy, FieldHeavy, fillerTokens, fillerTypes, IAI, IClock, IDamage,
+    IDeepRoot, IEnemy, ILogger, IPathfinding, IPlugin, IPopupVm, IRng, ISceneState, IStats,
+    IWeapon, IWideSystem, Logger, Pathfinding, PLUGIN_COUNT, pluginTypes, PopupVm, Rng,
+    SceneState, Stats, Weapon, wideTokens, wideTypes, WideSystem,
+} from './HeavyFixtures';
 
 /** Same inner-loop count as VContainer.Benchmark (`const int N = 10_000`). */
 export const N = 10_000;
+export const N_SCOPE = 1_000;
+export const N_BUILD_LARGE = 1_000;
 const WARMUP = 3;
 const SAMPLES = 10;
 
@@ -36,6 +45,7 @@ export interface BenchmarkCase {
     name: string;
     sampleGroup: string;
     resolvesPerIteration: number;
+    n?: number;
     setup: () => () => void;
 }
 
@@ -102,17 +112,119 @@ export function getBenchmarkCases(): BenchmarkCase[] {
             },
         },
         {
-            name: 'ResolveScoped',
+            name: 'ResolveDeep12',
+            sampleGroup: 'CosDI',
+            resolvesPerIteration: 1,
+            setup: () => {
+                const container = buildDeep();
+                return () => {
+                    for (let i = 0; i < N; i++) {
+                        container.resolve(IDeepRoot);
+                    }
+                };
+            },
+        },
+        {
+            name: 'ResolveWide16',
+            sampleGroup: 'CosDI',
+            resolvesPerIteration: 1,
+            setup: () => {
+                const container = buildWide();
+                return () => {
+                    for (let i = 0; i < N; i++) {
+                        container.resolve(IWideSystem);
+                    }
+                };
+            },
+        },
+        {
+            name: 'ResolveLarge200',
             sampleGroup: 'CosDI',
             resolvesPerIteration: 3,
             setup: () => {
-                const container = buildScoped();
-                const scope = container.createScope();
+                const container = buildLarge();
                 return () => {
                     for (let i = 0; i < N; i++) {
-                        scope.resolve(ISingleton1);
-                        scope.resolve(ISingleton2);
-                        scope.resolve(ISingleton3);
+                        container.resolve(ISingleton1);
+                        container.resolve(ISingleton2);
+                        container.resolve(ISingleton3);
+                    }
+                };
+            },
+        },
+        {
+            name: 'SpawnEnemy',
+            sampleGroup: 'CosDI',
+            resolvesPerIteration: 1,
+            setup: () => {
+                const container = buildGameplay();
+                return () => {
+                    for (let i = 0; i < N; i++) {
+                        container.resolve(IEnemy);
+                    }
+                };
+            },
+        },
+        {
+            name: 'ResolveNested4',
+            sampleGroup: 'CosDI',
+            resolvesPerIteration: 2,
+            setup: () => {
+                const deepest = buildNestedScopes();
+                return () => {
+                    for (let i = 0; i < N; i++) {
+                        deepest.resolve(ILogger);
+                        deepest.resolve(ISceneState);
+                    }
+                };
+            },
+        },
+        {
+            name: 'ResolveCollection20',
+            sampleGroup: 'CosDI',
+            resolvesPerIteration: 1,
+            setup: () => {
+                const container = buildCollection();
+                return () => {
+                    for (let i = 0; i < N; i++) {
+                        container.resolveAll(IPlugin);
+                    }
+                };
+            },
+        },
+        {
+            name: 'InjectFields12',
+            sampleGroup: 'CosDI',
+            resolvesPerIteration: 1,
+            setup: () => {
+                const container = buildWide();
+                const targets: FieldHeavy[] = [];
+                for (let i = 0; i < N; i++) {
+                    targets.push(new FieldHeavy());
+                }
+                return () => {
+                    for (let i = 0; i < N; i++) {
+                        container.inject(targets[i]);
+                    }
+                };
+            },
+        },
+        {
+            name: 'CreateDisposeScope',
+            sampleGroup: 'CosDI',
+            resolvesPerIteration: 1,
+            n: N_SCOPE,
+            setup: () => {
+                const scene = buildGameplay().createScope((builder) => {
+                    builder.register(SceneState, Lifetime.Scoped).as(ISceneState);
+                });
+                return () => {
+                    for (let i = 0; i < N_SCOPE; i++) {
+                        const popup = scene.createScope((builder) => {
+                            builder.register(PopupVm, Lifetime.Transient).as(IPopupVm);
+                        });
+                        popup.resolve(IPopupVm);
+                        popup.dispose();
                     }
                 };
             },
@@ -125,6 +237,19 @@ export function getBenchmarkCases(): BenchmarkCase[] {
                 return () => {
                     for (let i = 0; i < N; i++) {
                         buildComplex();
+                    }
+                };
+            },
+        },
+        {
+            name: 'ContainerBuildLarge200',
+            sampleGroup: 'CosDI',
+            resolvesPerIteration: 1,
+            n: N_BUILD_LARGE,
+            setup: () => {
+                return () => {
+                    for (let i = 0; i < N_BUILD_LARGE; i++) {
+                        buildLarge();
                     }
                 };
             },
@@ -164,6 +289,42 @@ export function getBenchmarkCases(): BenchmarkCase[] {
             },
         },
         {
+            name: 'ResolveDeep12',
+            sampleGroup: 'Direct new',
+            resolvesPerIteration: 1,
+            setup: () => {
+                return () => {
+                    for (let i = 0; i < N; i++) {
+                        createDeepDirect();
+                    }
+                };
+            },
+        },
+        {
+            name: 'ResolveWide16',
+            sampleGroup: 'Direct new',
+            resolvesPerIteration: 1,
+            setup: () => {
+                return () => {
+                    for (let i = 0; i < N; i++) {
+                        createWideDirect();
+                    }
+                };
+            },
+        },
+        {
+            name: 'SpawnEnemy',
+            sampleGroup: 'Direct new',
+            resolvesPerIteration: 1,
+            setup: () => {
+                return () => {
+                    for (let i = 0; i < N; i++) {
+                        createEnemyDirect();
+                    }
+                };
+            },
+        },
+        {
             name: 'ResolveComplex',
             sampleGroup: 'CosDI + diagnostics',
             resolvesPerIteration: 3,
@@ -193,35 +354,41 @@ export function runContainerPerformanceTests(): BenchmarkResult[] {
 }
 
 export function measure(testCase: BenchmarkCase): BenchmarkResult {
+    const iterations = testCase.n ?? N;
     const method = testCase.setup();
     for (let i = 0; i < WARMUP; i++) {
         method();
     }
 
     const times: number[] = [];
-    const heapBefore = readHeap();
+    const heapDeltas: number[] = [];
     for (let i = 0; i < SAMPLES; i++) {
+        const heapBefore = readHeap();
         const started = nowMs();
         method();
         times.push(nowMs() - started);
+        const heapAfter = readHeap();
+        if (heapBefore != null && heapAfter != null && heapAfter >= heapBefore) {
+            heapDeltas.push((heapAfter - heapBefore) / 1024);
+        }
     }
-    const heapAfter = readHeap();
     times.sort((a, b) => a - b);
+    heapDeltas.sort((a, b) => a - b);
 
     const sum = times.reduce((acc, value) => acc + value, 0);
     const medianMs = percentile(times, 0.5);
-    const totalResolves = N * testCase.resolvesPerIteration;
+    const totalResolves = iterations * testCase.resolvesPerIteration;
     return {
         name: testCase.name,
         sampleGroup: testCase.sampleGroup,
-        n: N,
+        n: iterations,
         samples: SAMPLES,
         medianMs,
         meanMs: sum / times.length,
         minMs: times[0],
         maxMs: times[times.length - 1],
         nsPerResolve: (medianMs * 1_000_000) / totalResolves,
-        heapDeltaKb: heapBefore != null && heapAfter != null ? (heapAfter - heapBefore) / 1024 : null,
+        heapDeltaKb: heapDeltas.length ? percentile(heapDeltas, 0.5) : null,
     };
 }
 
@@ -263,6 +430,24 @@ export function assertGraphResolves(): void {
     const complex = buildComplex();
     if (!complex.resolve(IComplex1) || !complex.resolve(IComplex2) || !complex.resolve(IComplex3)) {
         throw new Error('Complex graph failed to resolve');
+    }
+    if (!buildDeep().resolve(IDeepRoot)) {
+        throw new Error('Deep12 graph failed to resolve');
+    }
+    if (!buildWide().resolve(IWideSystem)) {
+        throw new Error('Wide16 graph failed to resolve');
+    }
+    if (!buildGameplay().resolve(IEnemy)) {
+        throw new Error('Enemy spawn graph failed to resolve');
+    }
+    const plugins = buildCollection().resolveAll(IPlugin);
+    if (plugins.length < PLUGIN_COUNT) {
+        throw new Error('Collection20 failed to resolve all plugins');
+    }
+    const fieldTarget = new FieldHeavy();
+    buildWide().inject(fieldTarget);
+    if (!(fieldTarget as { s0?: object }).s0) {
+        throw new Error('Field injection failed');
     }
 }
 
@@ -320,10 +505,63 @@ function buildComplex(withDiagnostics = false): IObjectResolver {
     return builder.build();
 }
 
-function buildScoped(): IObjectResolver {
+function buildDeep(): IObjectResolver {
     const builder = new ContainerBuilder();
-    builder.register(Singleton1, Lifetime.Scoped).as(ISingleton1);
-    builder.register(Singleton2, Lifetime.Scoped).as(ISingleton2);
-    builder.register(Singleton3, Lifetime.Scoped).as(ISingleton3);
+    for (let i = 0; i < deepTypes.length; i++) {
+        const lifetime = i === 0 ? Lifetime.Singleton : Lifetime.Transient;
+        builder.register(deepTypes[i], lifetime).as(deepTokens[i]);
+    }
+    return builder.build();
+}
+
+function buildWide(): IObjectResolver {
+    const builder = new ContainerBuilder();
+    for (let i = 0; i < wideTypes.length; i++) {
+        builder.register(wideTypes[i], Lifetime.Singleton).as(wideTokens[i]);
+    }
+    builder.register(WideSystem, Lifetime.Transient).as(IWideSystem);
+    return builder.build();
+}
+
+function buildLarge(): IObjectResolver {
+    const builder = new ContainerBuilder();
+    registerSingleton(builder);
+    for (let i = 0; i < fillerTypes.length; i++) {
+        builder.register(fillerTypes[i], Lifetime.Singleton).as(fillerTokens[i]);
+    }
+    return builder.build();
+}
+
+function buildGameplay(): IObjectResolver {
+    const builder = new ContainerBuilder();
+    builder.register(Logger, Lifetime.Singleton).as(ILogger);
+    builder.register(Clock, Lifetime.Singleton).as(IClock);
+    builder.register(Rng, Lifetime.Singleton).as(IRng);
+    builder.register(Pathfinding, Lifetime.Singleton).as(IPathfinding);
+    builder.register(Damage, Lifetime.Singleton).as(IDamage);
+    builder.register(Blackboard, Lifetime.Transient).as(IBlackboard);
+    builder.register(AI, Lifetime.Transient).as(IAI);
+    builder.register(Weapon, Lifetime.Transient).as(IWeapon);
+    builder.register(Stats, Lifetime.Transient).as(IStats);
+    builder.register(Enemy, Lifetime.Transient).as(IEnemy);
+    return builder.build();
+}
+
+function buildNestedScopes(): IScopedObjectResolver {
+    const builder = new ContainerBuilder();
+    builder.register(Logger, Lifetime.Singleton).as(ILogger);
+    builder.register(Clock, Lifetime.Singleton).as(IClock);
+    builder.register(SceneState, Lifetime.Scoped).as(ISceneState);
+    const root = builder.build();
+    const scene = root.createScope();
+    const hud = scene.createScope();
+    return hud.createScope();
+}
+
+function buildCollection(): IObjectResolver {
+    const builder = new ContainerBuilder();
+    for (let i = 0; i < pluginTypes.length; i++) {
+        builder.register(pluginTypes[i], Lifetime.Singleton).as(IPlugin);
+    }
     return builder.build();
 }
