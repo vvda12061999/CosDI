@@ -97,9 +97,84 @@ export class ExampleService {
 }
 ```
 
-### Interface token
+### Interface as a service
 
-Cocos erases `interface`, so it cannot hold a runtime token. Tag the interface and CosDI writes the token for you:
+Cocos erases `interface`, so an interface leaves no value behind to use as a DI key. Its **name** is the key instead, and the interface file stays a plain interface:
+
+```ts
+// IExampleService.ts
+export interface IExampleService {
+    name: string;
+}
+```
+
+```ts
+// ExampleService.ts
+import { IExampleService } from './IExampleService';
+
+export class ExampleService implements IExampleService {
+    name = 'ExampleService';
+}
+```
+
+Register the implementation under that name, and inject it the same way:
+
+```ts
+builder.register(ExampleService, Lifetime.Singleton).as('IExampleService');
+```
+
+```ts
+@inject('IExampleService')
+private exampleService: IExampleService;
+```
+
+Nothing is generated into your file, and you import the interface from wherever it lives, like any other type.
+
+#### Keeping the keys typed
+
+On its own, a key is a string, so `resolve` can only promise `object`. Run the **CosDI Codegen** extension and it writes one declaration file that gives every key its type:
+
+```ts
+// cosdi-service-keys.d.ts — generated, do not edit
+import type { IExampleService as IExampleService_ } from './assets/Scripts/IExampleService';
+
+declare module 'cosdi' {
+    interface ServiceTypes {
+        'IExampleService': IExampleService_;
+    }
+}
+```
+
+Nothing imports that file and it holds no runtime code; it sits outside `assets/`, so Creator never compiles it. What it buys you is the type:
+
+```ts
+const service = container.resolve('IExampleService'); // IExampleService, no cast
+```
+
+Keys the map has not seen still resolve, they just come back as `object`. Editors autocomplete the mapped ones inside `@inject('` and `resolve('`.
+
+Turn it on with a `cosdi.codegen.json` in the project root:
+
+```json
+{ "mode": "keys", "include": "exported" }
+```
+
+`include: "exported"` maps every exported interface under `roots`, which is what keeps your files free of annotations. `include: "tagged"` (the default) maps only interfaces marked `/** @createToken */`, and `@createToken('Game.IExampleService')` sets the key. Generic interfaces are skipped either way, because each type argument would need a key of its own.
+
+#### Tokens, when a string is not enough
+
+A string key is a name, so renaming the interface does not rename its key, and two interfaces cannot share a name. When you would rather have a value the compiler tracks, `createToken` still makes one:
+
+```ts
+export interface IExampleService {
+    name: string;
+}
+export const IExampleService = createToken<IExampleService>('IExampleService');
+```
+
+That is the trade: the token is refactor-safe and typed without a generated map, at the cost of a line in the file and an import wherever you use it. `IExampleService` is then the interface in type position and the token in value position, so one name works everywhere, and `resolve(IExampleService)` is typed because the token carries the type. `@createToken` on a class still works when you want a class to keep its own key.
+
+The generator can write those tokens for you too. Tag the interface and pick where the token lands:
 
 ```ts
 /** @createToken */
@@ -107,48 +182,43 @@ export interface IExampleService {
     name: string;
 }
 export const IExampleService = createToken<IExampleService>('IExampleService'); // cosdi:token
-
-export class ExampleService implements IExampleService {
-    name = 'ExampleService';
-}
 ```
 
-You write the tag. The `// cosdi:token` line is generated, so leave it alone and never write it yourself. TypeScript rejects a decorator on an interface — an interface leaves no value to decorate — so the tag is a comment, and the generator produces the value the decorator would have created.
+The `// cosdi:token` line is generated, so leave it alone and never write it yourself. Delete the tag and it goes away with it.
 
-The generator is the **CosDI Codegen** editor extension in [`extensions/cosdi-codegen/`](extensions/cosdi-codegen). Copy that folder into your project's `extensions/` and restart Creator; it is not on npm yet. It then runs when the extension loads, again on every `.ts` save, and on demand from **CosDI → Generate Interface Tokens**. Outside the editor, run it from your project root:
+#### Generator settings
+
+The generator is the **CosDI Codegen** editor extension in [`extensions/cosdi-codegen/`](extensions/cosdi-codegen). Copy that folder into your project's `extensions/` and restart Creator; it is not on npm yet. It runs when the extension loads, again on every `.ts` save, and on demand from **CosDI → Generate Interface Tokens**. Outside the editor, run it from your project root:
 
 ```bash
-node extensions/cosdi-codegen/bin/cosdi-codegen.js           # write tokens
-node extensions/cosdi-codegen/bin/cosdi-codegen.js --check   # fail if any are stale, for CI
+node extensions/cosdi-codegen/bin/cosdi-codegen.js           # write
+node extensions/cosdi-codegen/bin/cosdi-codegen.js --check   # fail if stale, for CI
 ```
 
-Delete the tag and the generated line goes away with it. `@createToken('Custom.Name')` sets the token name. Generic interfaces are skipped, because each type argument would need its own token. Writing the `createToken` line by hand still works: the generator leaves any name that already has a value alone.
-
-#### Settings for larger projects
-
-Drop a `cosdi.codegen.json` in the project root to control where the generator looks and what it writes. Every field is optional:
+Every field of `cosdi.codegen.json` is optional:
 
 ```json
 {
   "roots": ["assets/Scripts/Contracts"],
   "exclude": ["Vendor"],
-  "mode": "file",
-  "out": "assets/Scripts/Tokens.generated.ts",
+  "mode": "keys",
+  "include": "exported",
   "generateOnSave": true
 }
 ```
 
-`roots` and `exclude` keep the scan off the rest of the project. A save only revisits the file you saved, so hook cost does not grow with project size; the menu item and the CLI still sweep everything.
+`roots` and `exclude` keep the scan off the rest of the project. A save only revisits the file you saved, so hook cost does not grow with project size; the menu item and the CLI still sweep everything. `generateOnSave: false` turns off the save hook.
 
-`mode` decides where the generated code goes:
+`mode` decides what is generated and where:
 
-| Mode | Where tokens land | Import as |
+| Mode | What lands where | Used as |
 | --- | --- | --- |
-| `inline` (default) | Next to each interface, as a `// cosdi:token` line | The file that declares the interface |
-| `file` | One module at `out`, which must sit under `assets/` | `./Tokens.generated` |
-| `package` | A local package outside `assets/`, `node_modules/<packageName>` by default | `'cosdi-tokens'` |
+| `keys` | One `.d.ts` at `out`, outside `assets/`; sources untouched | `'IExampleService'` |
+| `inline` (default) | A `// cosdi:token` line beside each interface | `IExampleService`, from its own file |
+| `file` | One module at `out`, which must sit under `assets/` | `IExampleService`, from `./Tokens.generated` |
+| `package` | A local package outside `assets/`, `node_modules/<packageName>` by default | `IExampleService`, from `'cosdi-tokens'` |
 
-Use `package` to keep generated code out of the assets folder entirely:
+Use `package` to keep generated tokens out of the assets folder:
 
 ```json
 { "mode": "package", "packageName": "game-tokens" }
@@ -158,28 +228,9 @@ Use `package` to keep generated code out of the assets folder entirely:
 import { IExampleService } from 'game-tokens';
 ```
 
-Creator resolves bare specifiers with the Node algorithm, which is how the `cosdi` package itself is imported, so a generated package works the same way. Two things to know: `npm install` wipes `node_modules`, and the generator rewrites the package on the next save or editor load — run `npx cosdi tokens` if you need it back sooner. A path alias in `tsconfig.json` is not an alternative, because Creator does not read `tsconfig.json` when it compiles.
+Creator resolves bare specifiers with the Node algorithm, which is how the `cosdi` package itself is imported, so a generated package works the same way. Two things to know: `npm install` wipes `node_modules`, and the generator rewrites the package on the next save or editor load. A path alias in `tsconfig.json` is not an alternative, because Creator does not read `tsconfig.json` when it compiles.
 
-Both `file` and `package` mode export the interface type and its token under one name, and never write into your sources. In exchange, the file that declares an interface cannot import its own token — TypeScript rejects an import that collides with a local declaration — so keep tagged interfaces in their own files and import tokens where you register and inject them. Switching modes clears the tokens the previous mode wrote.
-
-`generateOnSave: false` turns off the save hook and leaves generation to **CosDI → Generate Interface Tokens** and the CLI.
-
-`IExampleService` is now the interface in type position and the token in value position, so the same name works everywhere:
-
-```ts
-builder.register(ExampleService, Lifetime.Singleton).as(IExampleService);
-
-@inject(IExampleService)
-private exampleService: IExampleService;
-```
-
-The token carries the interface type, so resolving it needs no cast:
-
-```ts
-const service = container.resolve(IExampleService); // IExampleService
-```
-
-No abstract class is required. `@createToken` on a class still works when you want a class to keep its own key.
+`file` and `package` mode export the interface type and its token under one name, and never write into your sources. In exchange, the file that declares an interface cannot import its own token — TypeScript rejects an import that collides with a local declaration — so keep tagged interfaces in their own files. Switching modes clears whatever the previous mode wrote.
 
 ### Register in a LifetimeScope
 

@@ -42,7 +42,7 @@ node scripts/test-diagnostics-install.js
 node scripts/pack-extension.js
 ```
 
-6. After adding or editing a `@createToken` interface, regenerate its token. CI fails when a generated token is stale.
+6. After adding or removing an exported interface, regenerate the service key map. CI fails when it is stale.
 
 ```bash
 node scripts/generate-tokens.js
@@ -65,6 +65,6 @@ CI runs those checks and packs `cosdi-diagnostics.zip` on every PR. Do not commi
 ## Code notes
 
 - Field `@inject(Class)` on components. `@injectable(Class)` on plain classes. No `@` on constructor parameters (Creator can leave `@` in the emitted JS).
-- Tag interfaces with `/** @createToken */`. Never hand-edit a `// cosdi:token` line; it is generated.
+- An interface is keyed by its name: `.as('IExampleService')`, `@inject('IExampleService')`. `cosdi-service-keys.d.ts` is generated, so never edit it by hand, and neither a `// cosdi:token` line.
 - Do not put `@injectable()` on `Component` subclasses.
 - Match nearby TypeScript style. No extra docs files unless the change needs them.

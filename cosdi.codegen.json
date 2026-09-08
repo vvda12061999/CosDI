@@ -1,0 +1,6 @@
+{
+  "mode": "keys",
+  "include": "exported",
+  "roots": ["assets/Scripts"],
+  "exclude": ["Benchmark"]
+}
