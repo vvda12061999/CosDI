@@ -1,9 +1,6 @@
 export class Token<T = unknown> {
     readonly name: string;
 
-    /** Carries the service type through the API. Never assigned at runtime. */
-    declare readonly type: T;
-
     constructor(name: string) {
         this.name = name;
         registerNamedTypeKey(name, this);
@@ -12,6 +9,15 @@ export class Token<T = unknown> {
     toString(): string {
         return `Token(${this.name})`;
     }
+}
+
+/**
+ * Carries the service type through the API. Merged in as an interface so it
+ * stays in the type system: Creator only allows `declare` class fields when
+ * the project enables `allowDeclareFields`.
+ */
+export interface Token<T = unknown> {
+    readonly type: T;
 }
 
 export type TypeKey = Function | Token;
