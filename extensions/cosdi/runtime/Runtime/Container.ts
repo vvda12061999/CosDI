@@ -1,16 +1,16 @@
-import { DiagnosticsCollector } from '../Diagnostics/DiagnosticsCollector';
-import { Registration } from './Registration';
-import { IObjectResolver, IScopedObjectResolver } from './IObjectResolver';
-import { TypeKey, typeKeyName } from './Token';
-import { Lifetime } from './Lifetime';
-import { Registry } from './Internal/Registry';
-import { CompositeDisposable, Lazy } from './Internal/CompositeDisposable';
-import { InjectorCache } from './Internal/InjectorCache';
-import { ExistingInstanceProvider, COLLECTION_ANY_KEY, CollectionInstanceProvider } from './Internal/InstanceProviders';
-import { CosDIException } from './CosDIException';
-import { IContainerBuilder, ScopedContainerBuilder } from './ContainerBuilder';
-import { isDisposable } from './IDisposable';
-import { isRegistration } from './IObjectResolverExtensions';
+import { DiagnosticsCollector } from '../Diagnostics/DiagnosticsCollector.ts';
+import { Registration } from './Registration.ts';
+import { IObjectResolver, IScopedObjectResolver } from './IObjectResolver.ts';
+import { TypeKey, typeKeyName } from './Token.ts';
+import { Lifetime } from './Lifetime.ts';
+import { Registry } from './Internal/Registry.ts';
+import { CompositeDisposable, Lazy } from './Internal/CompositeDisposable.ts';
+import { InjectorCache } from './Internal/InjectorCache.ts';
+import { ExistingInstanceProvider, COLLECTION_ANY_KEY, CollectionInstanceProvider } from './Internal/InstanceProviders.ts';
+import { CosDIException } from './CosDIException.ts';
+import { IContainerBuilder, ScopedContainerBuilder } from './ContainerBuilder.ts';
+import { isDisposable } from './IDisposable.ts';
+import { isRegistration } from './IObjectResolverExtensions.ts';
 
 export class ScopedContainer implements IScopedObjectResolver {
     readonly root: IObjectResolver;

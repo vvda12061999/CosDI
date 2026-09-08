@@ -1,8 +1,8 @@
 import { _decorator, Component } from 'cc';
 import {
     ITickable, IPostTickable, ILateTickable, IStartable, IPostStartable,
-} from '../Annotations/EntryPoints';
-import { EntryPointExceptionHandler } from './EntryPointExceptionHandler';
+} from '../Annotations/EntryPoints.ts';
+import { EntryPointExceptionHandler } from './EntryPointExceptionHandler.ts';
 
 const { ccclass } = _decorator;
 

@@ -1,5 +1,0 @@
-{
-  "imports": {
-    "cosdi": "./assets/CosDI/Runtime/index.ts"
-  }
-}

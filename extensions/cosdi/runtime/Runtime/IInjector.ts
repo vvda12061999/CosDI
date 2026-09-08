@@ -1,5 +1,5 @@
-import { IObjectResolver } from './IObjectResolver';
-import { IInjectParameter } from './IInjectParameter';
+import { IObjectResolver } from './IObjectResolver.ts';
+import { IInjectParameter } from './IInjectParameter.ts';
 
 export interface IInjector {
     inject(instance: object, resolver: IObjectResolver, parameters: readonly IInjectParameter[] | null): void;

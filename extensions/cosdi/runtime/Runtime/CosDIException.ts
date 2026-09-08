@@ -1,4 +1,4 @@
-import { TypeKey, typeKeyName } from './Token';
+import { TypeKey, typeKeyName } from './Token.ts';
 
 export class CosDIException extends Error {
     public readonly invalidType: TypeKey | null;

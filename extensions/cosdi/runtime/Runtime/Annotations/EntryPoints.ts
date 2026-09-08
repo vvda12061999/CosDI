@@ -1,4 +1,4 @@
-import { createToken } from '../Token';
+import { createToken } from '../Token.ts';
 
 export interface IInitializable {
     initialize(): void;

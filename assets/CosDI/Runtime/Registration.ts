@@ -1,7 +1,7 @@
-import { Lifetime } from './Lifetime';
-import { IInstanceProvider } from './IInstanceProvider';
-import { IObjectResolver } from './IObjectResolver';
-import { TypeKey, typeKeyName } from './Token';
+import { Lifetime } from './Lifetime.ts';
+import { IInstanceProvider } from './IInstanceProvider.ts';
+import { IObjectResolver } from './IObjectResolver.ts';
+import { TypeKey, typeKeyName } from './Token.ts';
 
 export class Registration {
     readonly implementationType: TypeKey;

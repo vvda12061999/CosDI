@@ -87,17 +87,30 @@ th, td {
     },
     methods: {},
     ready() {
+        let lastHtml = '';
         const refresh = async () => {
-            const data = await readSnapshot();
             const content = this.$.content;
             if (!content) {
                 return;
             }
-            if (!hasPayload(data)) {
-                content.innerHTML = '<p class="empty">' + escapeHtml(data.message || waitingMessage()) + '</p>';
-                return;
+            try {
+                const data = await readSnapshot();
+                if (!hasPayload(data)) {
+                    const html = '<p class="empty">' + escapeHtml(data.message || waitingMessage()) + '</p>';
+                    if (html !== lastHtml) {
+                        lastHtml = html;
+                        content.innerHTML = html;
+                    }
+                    return;
+                }
+                const html = renderBenchmark(data.benchmark) + renderScopes(data.scopes || []);
+                if (html !== lastHtml) {
+                    lastHtml = html;
+                    content.innerHTML = html;
+                }
+            } catch (error) {
+                console.warn('[CosDI] Diagnostics panel refresh failed', error);
             }
-            content.innerHTML = renderBenchmark(data.benchmark) + renderScopes(data.scopes || []);
         };
 
         if (this.$.refresh) {
@@ -210,8 +223,8 @@ function renderScopes(scopes) {
         visited.add(scope.scopeName);
         const children = byParent.get(scope.scopeName) || [];
         const parentLabel = scope.parentScopeName ? ' ← ' + scope.parentScopeName : ' (root)';
-        const rows = (scope.registrations || []).map((reg) => {
-            const deps = (reg.dependencies || []).join(', ');
+        const rows = (scope.registrations || []).slice(0, 64).map((reg) => {
+            const deps = (reg.dependencies || []).slice(0, 12).join(', ');
             return '<tr>'
                 + '<td>' + escapeHtml(reg.type) + '</td>'
                 + '<td>' + escapeHtml(reg.lifetime) + '</td>'

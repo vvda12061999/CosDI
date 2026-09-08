@@ -1,5 +1,5 @@
-import { IInjector } from '../IInjector';
-import { MetadataInjector } from './MetadataInjector';
+import { IInjector } from '../IInjector.ts';
+import { MetadataInjector } from './MetadataInjector.ts';
 
 const injectors = new Map<Function, IInjector>();
 

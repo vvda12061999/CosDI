@@ -1,6 +1,6 @@
 # Contributing to CosDI
 
-Thanks for helping. This repo is developed in Cocos Creator **3.8.8**. The installable `cosdi` zip supports **Creator 3.0+**.
+Thanks for helping. This repo is developed in Cocos Creator **3.8.8**. Games install the `cosdi` npm package (Creator 3.0+). The zip is only for the Diagnostics panel.
 
 ## Bug reports
 

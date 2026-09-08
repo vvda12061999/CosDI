@@ -1,5 +1,5 @@
-import { CosDISettings } from '../Runtime/Cocos/CosDISettings';
-import { DiagnosticsContext, DiagnosticsSnapshot } from './DiagnosticsContext';
+import { CosDISettings } from '../Runtime/Cocos/CosDISettings.ts';
+import { DiagnosticsContext, DiagnosticsSnapshot } from './DiagnosticsContext.ts';
 
 export class DiagnosticsBridge {
     private static started = false;
@@ -21,7 +21,7 @@ export class DiagnosticsBridge {
 
     static flush(): void {
         this.ensure(true);
-        this.post(DiagnosticsContext.toJSON());
+        this.post(DiagnosticsContext.toJSON(), true);
     }
 
     static stop(): void {
@@ -32,8 +32,11 @@ export class DiagnosticsBridge {
         this.started = false;
     }
 
-    private static post(snapshot: DiagnosticsSnapshot): void {
+    private static post(snapshot: DiagnosticsSnapshot, force = false): void {
         if (!snapshot) {
+            return;
+        }
+        if (!force && DiagnosticsContext.isPublishingPaused()) {
             return;
         }
         const url = 'http://127.0.0.1:' + CosDISettings.diagnosticsPort + '/diagnostics';

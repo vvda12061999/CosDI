@@ -1,4 +1,4 @@
-import { IDisposable } from '../IDisposable';
+import { IDisposable } from '../IDisposable.ts';
 
 export class CompositeDisposable implements IDisposable {
     private readonly disposables: IDisposable[] = [];

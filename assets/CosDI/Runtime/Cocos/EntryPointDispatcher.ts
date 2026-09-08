@@ -1,13 +1,13 @@
 import { Node } from 'cc';
-import { IObjectResolver, ObjectResolverToken } from '../IObjectResolver';
-import { IDisposable } from '../IDisposable';
+import { IObjectResolver, ObjectResolverToken } from '../IObjectResolver.ts';
+import { IDisposable } from '../IDisposable.ts';
 import {
     IInitializable, IPostInitializable, IStartable, IPostStartable,
     ITickable, IPostTickable, ILateTickable, IAsyncStartable,
-} from '../Annotations/EntryPoints';
-import { EntryPointExceptionHandler } from './EntryPointExceptionHandler';
-import { EntryPointRunner } from './EntryPointRunner';
-import { injectable } from '../Annotations/injectable';
+} from '../Annotations/EntryPoints.ts';
+import { EntryPointExceptionHandler } from './EntryPointExceptionHandler.ts';
+import { EntryPointRunner } from './EntryPointRunner.ts';
+import { injectable } from '../Annotations/injectable.ts';
 
 @injectable(ObjectResolverToken)
 export class EntryPointDispatcher implements IDisposable {

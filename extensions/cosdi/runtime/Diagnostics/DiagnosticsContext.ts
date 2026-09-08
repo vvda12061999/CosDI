@@ -1,9 +1,9 @@
-import { DiagnosticsCollector } from './DiagnosticsCollector';
-import { DiagnosticsInfo } from './DiagnosticsInfo';
-import { Registration } from '../Runtime/Registration';
-import { typeKeyName } from '../Runtime/Token';
-import { Lifetime } from '../Runtime/Lifetime';
-import type { IObjectResolver } from '../Runtime/IObjectResolver';
+import { DiagnosticsCollector } from './DiagnosticsCollector.ts';
+import { DiagnosticsInfo } from './DiagnosticsInfo.ts';
+import { Registration } from '../Runtime/Registration.ts';
+import { typeKeyName } from '../Runtime/Token.ts';
+import { Lifetime } from '../Runtime/Lifetime.ts';
+import type { IObjectResolver } from '../Runtime/IObjectResolver.ts';
 
 export interface DiagnosticsRegistrationSnapshot {
     type: string;
@@ -51,6 +51,7 @@ let currentBenchmark: DiagnosticsBenchmarkSnapshot | null = null;
 const listeners: Array<(container: IObjectResolver) => void> = [];
 const snapshotListeners: Array<(snapshot: DiagnosticsSnapshot) => void> = [];
 let publishTimer: ReturnType<typeof setTimeout> | null = null;
+let publishingPaused = 0;
 
 export class DiagnosticsContext {
     static onContainerBuilt: ((container: IObjectResolver) => void) | null = null;
@@ -120,17 +121,35 @@ export class DiagnosticsContext {
 
     static setBenchmark(benchmark: DiagnosticsBenchmarkSnapshot | null): void {
         currentBenchmark = benchmark;
-        publishDiagnosticsSnapshot();
+        publishDiagnosticsSnapshot(true);
+    }
+
+    static pausePublishing(): void {
+        publishingPaused += 1;
+    }
+
+    static resumePublishing(): void {
+        publishingPaused = Math.max(0, publishingPaused - 1);
+        if (publishingPaused === 0) {
+            publishDiagnosticsSnapshot(true);
+        }
+    }
+
+    static isPublishingPaused(): boolean {
+        return publishingPaused > 0;
     }
 
     static schedulePublish(): void {
+        if (publishingPaused > 0) {
+            return;
+        }
         if (publishTimer != null) {
             return;
         }
         publishTimer = setTimeout(() => {
             publishTimer = null;
             publishDiagnosticsSnapshot();
-        }, 100);
+        }, 250);
     }
 
     static toJSON(): DiagnosticsSnapshot {
@@ -152,7 +171,7 @@ export class DiagnosticsContext {
                     refCount: info.resolveInfo?.refCount ?? 0,
                     resolveTime: info.resolveInfo?.resolveTime ?? 0,
                     maxDepth: info.resolveInfo?.maxDepth ?? -1,
-                    instanceCount: info.resolveInfo?.instances.length ?? 0,
+                    instanceCount: info.resolveInfo?.instanceCount ?? 0,
                     dependencies: info.dependencies.map(
                         (d) => typeKeyName(d.registerInfo.registrationBuilder.implementationType),
                     ),
@@ -178,7 +197,10 @@ export class DiagnosticsContext {
     }
 }
 
-function publishDiagnosticsSnapshot(): void {
+function publishDiagnosticsSnapshot(force = false): void {
+    if (!force && publishingPaused > 0) {
+        return;
+    }
     const snapshot = DiagnosticsContext.toJSON();
     const g = globalThis as any;
     g.__COSDI_DIAGNOSTICS__ = snapshot;

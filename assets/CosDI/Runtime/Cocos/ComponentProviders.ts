@@ -1,12 +1,12 @@
 import { Component, Node, Prefab, instantiate, Constructor, director, game } from 'cc';
-import { IInstanceProvider } from '../IInstanceProvider';
-import { IInjector } from '../IInjector';
-import { IInjectParameter } from '../IInjectParameter';
-import { IObjectResolver } from '../IObjectResolver';
-import { CosDIException } from '../CosDIException';
-import { typeKeyName, TypeKey } from '../Token';
-import { CosDISettings } from './CosDISettings';
-import { findComponentInNode, findComponentInScene } from './ObjectResolverCocosExtensions';
+import { IInstanceProvider } from '../IInstanceProvider.ts';
+import { IInjector } from '../IInjector.ts';
+import { IInjectParameter } from '../IInjectParameter.ts';
+import { IObjectResolver } from '../IObjectResolver.ts';
+import { CosDIException } from '../CosDIException.ts';
+import { typeKeyName, TypeKey } from '../Token.ts';
+import { CosDISettings } from './CosDISettings.ts';
+import { findComponentInNode, findComponentInScene } from './ObjectResolverCocosExtensions.ts';
 
 export interface ComponentDestination {
     parent: Node | null;

@@ -1,4 +1,4 @@
-import { addPropertyInject } from '../Internal/InjectMetadata';
+import { addPropertyInject } from '../Internal/InjectMetadata.ts';
 
 export function key(keyValue: object): PropertyDecorator {
     return (target: object, propertyKey: string | symbol) => {

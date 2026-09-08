@@ -1,5 +1,5 @@
-import { TypeKey } from '../Token';
-import { addPropertyInject } from '../Internal/InjectMetadata';
+import { TypeKey } from '../Token.ts';
+import { addPropertyInject } from '../Internal/InjectMetadata.ts';
 
 /**
  * Field injector. Cocos Creator does not compile parameter or constructor

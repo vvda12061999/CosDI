@@ -1,6 +1,6 @@
-import { TypeKey, getNamedTypeKey, registerNamedTypeKey } from '../Token';
-import { addConstructorParam, getInjectTypeInfo } from './InjectMetadata';
-import { InjectorCache } from './InjectorCache';
+import { TypeKey, getNamedTypeKey, registerNamedTypeKey } from '../Token.ts';
+import { addConstructorParam, getInjectTypeInfo } from './InjectMetadata.ts';
+import { InjectorCache } from './InjectorCache.ts';
 
 export function parseConstructorParamNames(ctor: Function): string[] {
     const source = ctor.toString();

@@ -1,9 +1,9 @@
-import { getInjectTypeInfo } from './InjectMetadata';
-import { Registry } from './Registry';
-import { Registration } from '../Registration';
-import { TypeKey, typeKeyName } from '../Token';
-import { CosDIException } from '../CosDIException';
-import { CollectionInstanceProvider } from './InstanceProviders';
+import { getInjectTypeInfo } from './InjectMetadata.ts';
+import { Registry } from './Registry.ts';
+import { Registration } from '../Registration.ts';
+import { TypeKey, typeKeyName } from '../Token.ts';
+import { CosDIException } from '../CosDIException.ts';
+import { CollectionInstanceProvider } from './InstanceProviders.ts';
 
 export function checkCircularDependency(registrations: Registration[], registry: Registry): void {
     for (const registration of registrations) {

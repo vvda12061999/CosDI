@@ -1,6 +1,6 @@
-import { IObjectResolver } from './IObjectResolver';
-import { TypeKey, typeKeyName } from './Token';
-import { CosDIException } from './CosDIException';
+import { IObjectResolver } from './IObjectResolver.ts';
+import { TypeKey, typeKeyName } from './Token.ts';
+import { CosDIException } from './CosDIException.ts';
 
 export class AmbientResolver {
     private static readonly stack: IObjectResolver[] = [];

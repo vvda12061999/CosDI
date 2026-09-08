@@ -1,20 +1,20 @@
-import { Lifetime } from './Lifetime';
-import { TypeKey } from './Token';
-import { IInjectParameter } from './IInjectParameter';
-import { Registration } from './Registration';
-import { InjectorCache } from './Internal/InjectorCache';
-import { InstanceProvider } from './Internal/InstanceProviders';
+import { Lifetime } from './Lifetime.ts';
+import { TypeKey } from './Token.ts';
+import { IInjectParameter } from './IInjectParameter.ts';
+import { Registration } from './Registration.ts';
+import { InjectorCache } from './Internal/InjectorCache.ts';
+import { InstanceProvider } from './Internal/InstanceProviders.ts';
 import {
     TypedParameter,
     FuncTypedParameter,
     NamedParameter,
     FuncNamedParameter,
-} from './Internal/InjectParameter';
-import { IObjectResolver } from './IObjectResolver';
+} from './Internal/InjectParameter.ts';
+import { IObjectResolver } from './IObjectResolver.ts';
 import {
     IInitializable, IPostInitializable, IStartable, IPostStartable,
     ITickable, IPostTickable, ILateTickable, IAsyncStartable,
-} from './Annotations/EntryPoints';
+} from './Annotations/EntryPoints.ts';
 
 export class RegistrationBuilder {
     protected interfaceTypes: TypeKey[] | null = null;

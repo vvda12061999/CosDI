@@ -1,12 +1,12 @@
-import { RegisterInfo } from './RegisterInfo';
-import { ResolveInfo } from './ResolveInfo';
-import { DiagnosticsInfo } from './DiagnosticsInfo';
-import { DiagnosticsContext } from './DiagnosticsContext';
-import { Registration } from '../Runtime/Registration';
-import { RegistrationBuilder } from '../Runtime/RegistrationBuilder';
-import { Lifetime } from '../Runtime/Lifetime';
-import { CollectionInstanceProvider } from '../Runtime/Internal/InstanceProviders';
-import type { IObjectResolver } from '../Runtime/IObjectResolver';
+import { RegisterInfo } from './RegisterInfo.ts';
+import { ResolveInfo } from './ResolveInfo.ts';
+import { DiagnosticsInfo } from './DiagnosticsInfo.ts';
+import { DiagnosticsContext } from './DiagnosticsContext.ts';
+import { Registration } from '../Runtime/Registration.ts';
+import { RegistrationBuilder } from '../Runtime/RegistrationBuilder.ts';
+import { Lifetime } from '../Runtime/Lifetime.ts';
+import { CollectionInstanceProvider } from '../Runtime/Internal/InstanceProviders.ts';
+import type { IObjectResolver } from '../Runtime/IObjectResolver.ts';
 
 export class DiagnosticsCollector {
     private readonly diagnosticsInfos: DiagnosticsInfo[] = [];
@@ -51,7 +51,7 @@ export class DiagnosticsCollector {
                 ? this.resolveCallStack.length
                 : Math.max(current.resolveInfo.maxDepth, this.resolveCallStack.length);
 
-            owner?.dependencies.push(current);
+            owner?.addDependency(current);
 
             this.resolveCallStack.push(current);
             const started = nowMs();
@@ -60,12 +60,7 @@ export class DiagnosticsCollector {
             this.resolveCallStack.pop();
 
             setResolveTime(current, elapsed);
-
-            if (current.resolveInfo.instances.indexOf(instance) < 0) {
-                current.resolveInfo.instances.push(instance);
-            }
-
-            DiagnosticsContext.schedulePublish();
+            current.resolveInfo.instanceCount += 1;
             return instance;
         }
         return resolving(registration);

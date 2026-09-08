@@ -354,42 +354,48 @@ export function runContainerPerformanceTests(): BenchmarkResult[] {
 }
 
 export function measure(testCase: BenchmarkCase): BenchmarkResult {
-    const iterations = testCase.n ?? N;
-    const method = testCase.setup();
-    for (let i = 0; i < WARMUP; i++) {
-        method();
-    }
-
-    const times: number[] = [];
-    const heapDeltas: number[] = [];
-    for (let i = 0; i < SAMPLES; i++) {
-        const heapBefore = readHeap();
-        const started = nowMs();
-        method();
-        times.push(nowMs() - started);
-        const heapAfter = readHeap();
-        if (heapBefore != null && heapAfter != null && heapAfter >= heapBefore) {
-            heapDeltas.push((heapAfter - heapBefore) / 1024);
+    DiagnosticsContext.pausePublishing();
+    try {
+        const iterations = testCase.n ?? N;
+        const method = testCase.setup();
+        for (let i = 0; i < WARMUP; i++) {
+            method();
         }
-    }
-    times.sort((a, b) => a - b);
-    heapDeltas.sort((a, b) => a - b);
 
-    const sum = times.reduce((acc, value) => acc + value, 0);
-    const medianMs = percentile(times, 0.5);
-    const totalResolves = iterations * testCase.resolvesPerIteration;
-    return {
-        name: testCase.name,
-        sampleGroup: testCase.sampleGroup,
-        n: iterations,
-        samples: SAMPLES,
-        medianMs,
-        meanMs: sum / times.length,
-        minMs: times[0],
-        maxMs: times[times.length - 1],
-        nsPerResolve: (medianMs * 1_000_000) / totalResolves,
-        heapDeltaKb: heapDeltas.length ? percentile(heapDeltas, 0.5) : null,
-    };
+        const times: number[] = [];
+        const heapDeltas: number[] = [];
+        for (let i = 0; i < SAMPLES; i++) {
+            const heapBefore = readHeap();
+            const started = nowMs();
+            method();
+            times.push(nowMs() - started);
+            const heapAfter = readHeap();
+            if (heapBefore != null && heapAfter != null && heapAfter >= heapBefore) {
+                heapDeltas.push((heapAfter - heapBefore) / 1024);
+            }
+        }
+        times.sort((a, b) => a - b);
+        heapDeltas.sort((a, b) => a - b);
+
+        const sum = times.reduce((acc, value) => acc + value, 0);
+        const medianMs = percentile(times, 0.5);
+        const totalResolves = iterations * testCase.resolvesPerIteration;
+        return {
+            name: testCase.name,
+            sampleGroup: testCase.sampleGroup,
+            n: iterations,
+            samples: SAMPLES,
+            medianMs,
+            meanMs: sum / times.length,
+            minMs: times[0],
+            maxMs: times[times.length - 1],
+            nsPerResolve: (medianMs * 1e6) / Math.max(totalResolves, 1),
+            heapDeltaKb: heapDeltas.length ? percentile(heapDeltas, 0.5) : null,
+        };
+    } finally {
+        DiagnosticsContext.removeCollector('CosDIBenchmark');
+        DiagnosticsContext.resumePublishing();
+    }
 }
 
 function percentile(sorted: number[], p: number): number {

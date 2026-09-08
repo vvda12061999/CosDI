@@ -1,15 +1,15 @@
-import { DiagnosticsCollector } from '../Diagnostics/DiagnosticsCollector';
-import { RegisterInfo } from '../Diagnostics/RegisterInfo';
-import { RegistrationBuilder } from './RegistrationBuilder';
-import { Registration } from './Registration';
-import { Registry } from './Internal/Registry';
-import { Container, ScopedContainer } from './Container';
-import { IObjectResolver, IScopedObjectResolver, ObjectResolverToken } from './IObjectResolver';
-import { TypeKey, registerNamedTypeKey } from './Token';
-import { ContainerInstanceProvider } from './Internal/InstanceProviders';
-import { Lifetime } from './Lifetime';
-import { checkCircularDependency } from './Internal/CircularDependency';
-import { FuncRegistrationBuilder, InstanceRegistrationBuilder } from './Internal/RegistrationBuilders';
+import { DiagnosticsCollector } from '../Diagnostics/DiagnosticsCollector.ts';
+import { RegisterInfo } from '../Diagnostics/RegisterInfo.ts';
+import { RegistrationBuilder } from './RegistrationBuilder.ts';
+import { Registration } from './Registration.ts';
+import { Registry } from './Internal/Registry.ts';
+import { Container, ScopedContainer } from './Container.ts';
+import { IObjectResolver, IScopedObjectResolver, ObjectResolverToken } from './IObjectResolver.ts';
+import { TypeKey, registerNamedTypeKey } from './Token.ts';
+import { ContainerInstanceProvider } from './Internal/InstanceProviders.ts';
+import { Lifetime } from './Lifetime.ts';
+import { checkCircularDependency } from './Internal/CircularDependency.ts';
+import { FuncRegistrationBuilder, InstanceRegistrationBuilder } from './Internal/RegistrationBuilders.ts';
 
 export interface IContainerBuilder {
     applicationOrigin: object | null;

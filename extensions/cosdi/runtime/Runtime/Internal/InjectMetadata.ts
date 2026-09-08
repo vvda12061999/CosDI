@@ -1,4 +1,4 @@
-import { TypeKey } from '../Token';
+import { TypeKey } from '../Token.ts';
 
 export interface InjectParamInfo {
     index: number;

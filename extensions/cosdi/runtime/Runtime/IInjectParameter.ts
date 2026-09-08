@@ -1,5 +1,5 @@
-import { IObjectResolver } from './IObjectResolver';
-import { TypeKey } from './Token';
+import { IObjectResolver } from './IObjectResolver.ts';
+import { TypeKey } from './Token.ts';
 
 export interface IInjectParameter {
     match(parameterType: TypeKey, parameterName: string): boolean;

@@ -1,10 +1,10 @@
-import { CosDIException } from '../CosDIException';
-import { IInjector } from '../IInjector';
-import { IInjectParameter } from '../IInjectParameter';
-import { IObjectResolver } from '../IObjectResolver';
-import { typeKeyName, getNamedTypeKey } from '../Token';
-import { getInjectTypeInfo, InjectTypeInfo, ORIGINAL_CTOR } from './InjectMetadata';
-import { resolveOrParameter } from '../IObjectResolverExtensions';
+import { CosDIException } from '../CosDIException.ts';
+import { IInjector } from '../IInjector.ts';
+import { IInjectParameter } from '../IInjectParameter.ts';
+import { IObjectResolver } from '../IObjectResolver.ts';
+import { typeKeyName, getNamedTypeKey } from '../Token.ts';
+import { getInjectTypeInfo, InjectTypeInfo, ORIGINAL_CTOR } from './InjectMetadata.ts';
+import { resolveOrParameter } from '../IObjectResolverExtensions.ts';
 
 export class MetadataInjector implements IInjector {
     static build(type: Function): MetadataInjector {

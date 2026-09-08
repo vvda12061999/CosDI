@@ -1,9 +1,9 @@
-import { RegistrationBuilder } from '../RegistrationBuilder';
-import { IObjectResolver } from '../IObjectResolver';
-import { TypeKey } from '../Token';
-import { Lifetime } from '../Lifetime';
-import { Registration } from '../Registration';
-import { FuncInstanceProvider, ExistingInstanceProvider } from './InstanceProviders';
+import { RegistrationBuilder } from '../RegistrationBuilder.ts';
+import { IObjectResolver } from '../IObjectResolver.ts';
+import { TypeKey } from '../Token.ts';
+import { Lifetime } from '../Lifetime.ts';
+import { Registration } from '../Registration.ts';
+import { FuncInstanceProvider, ExistingInstanceProvider } from './InstanceProviders.ts';
 
 export class FuncRegistrationBuilder extends RegistrationBuilder {
     constructor(

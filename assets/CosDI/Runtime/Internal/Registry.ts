@@ -1,7 +1,7 @@
-import { Registration } from '../Registration';
-import { TypeKey } from '../Token';
-import { Lifetime } from '../Lifetime';
-import { CollectionInstanceProvider, COLLECTION_ANY_KEY } from './InstanceProviders';
+import { Registration } from '../Registration.ts';
+import { TypeKey } from '../Token.ts';
+import { Lifetime } from '../Lifetime.ts';
+import { CollectionInstanceProvider, COLLECTION_ANY_KEY } from './InstanceProviders.ts';
 
 const NULL_KEY: object = { __cosdiNullKey: true };
 

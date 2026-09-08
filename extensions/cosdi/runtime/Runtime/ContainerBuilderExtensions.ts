@@ -1,5 +1,5 @@
-import { IContainerBuilder } from './ContainerBuilder';
-import { IObjectResolver } from './IObjectResolver';
+import { IContainerBuilder } from './ContainerBuilder.ts';
+import { IObjectResolver } from './IObjectResolver.ts';
 
 export function registerDisposeCallback(
     builder: IContainerBuilder,

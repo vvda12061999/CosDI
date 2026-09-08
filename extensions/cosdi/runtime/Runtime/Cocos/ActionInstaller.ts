@@ -1,5 +1,5 @@
-import { IContainerBuilder } from '../ContainerBuilder';
-import { IInstaller } from './IInstaller';
+import { IContainerBuilder } from '../ContainerBuilder.ts';
+import { IInstaller } from './IInstaller.ts';
 
 export class ActionInstaller implements IInstaller {
     constructor(private readonly configuration: (builder: IContainerBuilder) => void) {}

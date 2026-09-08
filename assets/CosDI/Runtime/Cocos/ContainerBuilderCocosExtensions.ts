@@ -1,11 +1,11 @@
 import { Component, Constructor, Node, Prefab } from 'cc';
-import { IContainerBuilder } from '../ContainerBuilder';
-import { RegistrationBuilder } from '../RegistrationBuilder';
-import { Lifetime } from '../Lifetime';
-import { IObjectResolver } from '../IObjectResolver';
-import { ComponentRegistrationBuilder } from './ComponentRegistrationBuilder';
-import { EntryPointDispatcher } from './EntryPointDispatcher';
-import { EntryPointExceptionHandler } from './EntryPointExceptionHandler';
+import { IContainerBuilder } from '../ContainerBuilder.ts';
+import { RegistrationBuilder } from '../RegistrationBuilder.ts';
+import { Lifetime } from '../Lifetime.ts';
+import { IObjectResolver } from '../IObjectResolver.ts';
+import { ComponentRegistrationBuilder } from './ComponentRegistrationBuilder.ts';
+import { EntryPointDispatcher } from './EntryPointDispatcher.ts';
+import { EntryPointExceptionHandler } from './EntryPointExceptionHandler.ts';
 
 export class EntryPointsBuilder {
     static ensureDispatcherRegistered(containerBuilder: IContainerBuilder): void {

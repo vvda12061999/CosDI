@@ -1,7 +1,7 @@
 import * as cc from 'cc';
 import { KeyCode } from 'cc';
-import { CosDISettings } from '../Runtime/Cocos/CosDISettings';
-import { DiagnosticsContext, DiagnosticsSnapshot, DiagnosticsScopeSnapshot } from './DiagnosticsContext';
+import { CosDISettings } from '../Runtime/Cocos/CosDISettings.ts';
+import { DiagnosticsContext, DiagnosticsSnapshot, DiagnosticsScopeSnapshot } from './DiagnosticsContext.ts';
 
 const PANEL_ID = 'cosdi-diagnostics-overlay';
 

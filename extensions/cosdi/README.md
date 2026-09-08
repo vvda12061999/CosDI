@@ -1,7 +1,13 @@
 # CosDI
 
-Requires **Cocos Creator 3.0+**.
+Cocos Creator 3.0+ dependency injection.
 
-1. Import `cosdi.zip` in **Extension → Extension Manager → Project → +**
-2. Enable **CosDI**
-3. Use `import { LifetimeScope, inject, injectable } from 'cosdi'`
+```bash
+npm install cosdi
+```
+
+```ts
+import { LifetimeScope, inject, injectable } from 'cosdi';
+```
+
+Diagnostics panel: import `cosdi.zip` from GitHub Releases in Extension Manager.

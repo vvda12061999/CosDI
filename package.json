@@ -1,7 +1,32 @@
 {
-  "name": "CosDI",
+  "name": "cosdi",
+  "version": "1.0.0",
   "uuid": "915f5e2d-305d-4b4e-a075-d5c5ed2c8c5b",
   "creator": {
     "version": "3.8.8"
-  }
+  },
+  "description": "VContainer-style dependency injection for Cocos Creator 3.x",
+  "author": "vvda12061999",
+  "license": "MIT",
+  "homepage": "https://github.com/vvda12061999/CosDI",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vvda12061999/CosDI.git"
+  },
+  "main": "./assets/CosDI/Runtime/index.ts",
+  "module": "./assets/CosDI/Runtime/index.ts",
+  "types": "./assets/CosDI/Runtime/index.ts",
+  "exports": {
+    ".": "./assets/CosDI/Runtime/index.ts"
+  },
+  "files": [
+    "assets/CosDI"
+  ],
+  "keywords": [
+    "cocos",
+    "cocos-creator",
+    "di",
+    "dependency-injection",
+    "vcontainer"
+  ]
 }

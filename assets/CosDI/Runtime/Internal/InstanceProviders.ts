@@ -1,12 +1,12 @@
-import { IInstanceProvider } from '../IInstanceProvider';
-import { IInjector } from '../IInjector';
-import { IInjectParameter } from '../IInjectParameter';
-import { IObjectResolver, IScopedObjectResolver } from '../IObjectResolver';
-import { Registration } from '../Registration';
-import { Lifetime } from '../Lifetime';
-import { CosDIException } from '../CosDIException';
-import { TypeKey, typeKeyName } from '../Token';
-import { ContainerLocal } from './ContainerLocal';
+import { IInstanceProvider } from '../IInstanceProvider.ts';
+import { IInjector } from '../IInjector.ts';
+import { IInjectParameter } from '../IInjectParameter.ts';
+import { IObjectResolver, IScopedObjectResolver } from '../IObjectResolver.ts';
+import { Registration } from '../Registration.ts';
+import { Lifetime } from '../Lifetime.ts';
+import { CosDIException } from '../CosDIException.ts';
+import { TypeKey, typeKeyName } from '../Token.ts';
+import { ContainerLocal } from './ContainerLocal.ts';
 
 export class InstanceProvider implements IInstanceProvider {
     constructor(

@@ -1,7 +1,7 @@
-import { IObjectResolver } from './IObjectResolver';
-import { IInjectParameter } from './IInjectParameter';
-import { Registration } from './Registration';
-import { TypeKey } from './Token';
+import { IObjectResolver } from './IObjectResolver.ts';
+import { IInjectParameter } from './IInjectParameter.ts';
+import { Registration } from './Registration.ts';
+import { TypeKey } from './Token.ts';
 
 export function resolveOf<T>(resolver: IObjectResolver, type: TypeKey, key?: object): T {
     return resolver.resolve(type, key) as T;

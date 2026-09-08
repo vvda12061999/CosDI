@@ -43,19 +43,25 @@ If this saves you time in a Cocos project, please **[⭐ star the repo](https://
 
 ## 1. Installation
 
-1. Download [`cosdi.zip`](https://github.com/vvda12061999/CosDI/releases/latest/download/cosdi.zip).
-2. Open your game in **Cocos Creator 3.0+**.
-3. **Extension → Extension Manager**.
-4. Open the **Project** tab and click **+** (Import).
-5. Select `cosdi.zip`.
-6. Find **CosDI** in the list and **Enable** it.
-7. **Project → Project Settings → Scripting → Import Maps** → choose `import-map.json`, then restart Creator if Play cannot find `cosdi`.
+In your Cocos Creator project:
 
-Then use:
+```bash
+npm install cosdi
+```
+
+Or from GitHub:
+
+```bash
+npm install git+https://github.com/vvda12061999/CosDI.git
+```
+
+Then:
 
 ```ts
 import { LifetimeScope, inject, injectable } from 'cosdi';
 ```
+
+For the Diagnostics editor panel, also import [`cosdi.zip`](https://github.com/vvda12061999/CosDI/releases/latest/download/cosdi.zip) in **Extension → Extension Manager → Project**.
 
 ---
 
@@ -203,16 +209,17 @@ Sample results:
 
 | Case | Group | Median | ns/op |
 | --- | --- | ---: | ---: |
-| ResolveSingleton | CosDI | 0.60 ms | 20 |
-| ResolveTransient | CosDI | 1.00 ms | 33 |
-| ResolveScoped | CosDI | 0.80 ms | 27 |
-| ResolveCombined | CosDI | 3.85 ms | 128 |
+| ResolveSingleton | CosDI | 0.70 ms | 23 |
+| ResolveTransient | CosDI | 1.50 ms | 50 |
+| ResolveCombined | CosDI | 4.10 ms | 137 |
 | ResolveCombined | Direct `new` | 0.60 ms | 20 |
 | ResolveComplex | CosDI | 11.60 ms | 387 |
-| ResolveComplex | Direct `new` | 2.60 ms | 87 |
-| ContainerBuildComplex | CosDI | 67.85 ms | 6785 |
+| ResolveComplex | Direct `new` | 2.40 ms | 80 |
+| SpawnEnemy | CosDI | 4.30 ms | 430 |
+| SpawnEnemy | Direct `new` | 0.70 ms | 70 |
+| ContainerBuildComplex | CosDI | 71.75 ms | 7175 |
 
-Singleton / scoped lookup is ~20–30 ns. Combined / Complex stay in the same order of magnitude as plain `new` (about 4–6×).
+Singleton lookup is ~23 ns. Combined / Complex stay in the same order of magnitude as plain `new` (about 5–7×). Keep diagnostics off for timing runs; the tracer case is ~180× slower on purpose.
 
 ---
 

@@ -1,8 +1,8 @@
 import { Component, Node, Prefab, instantiate, director, Constructor } from 'cc';
-import { IObjectResolver } from '../IObjectResolver';
-import { InjectorCache } from '../Internal/InjectorCache';
-import { getInjectTypeInfo } from '../Internal/InjectMetadata';
-import { CosDISettings } from './CosDISettings';
+import { IObjectResolver } from '../IObjectResolver.ts';
+import { InjectorCache } from '../Internal/InjectorCache.ts';
+import { getInjectTypeInfo } from '../Internal/InjectMetadata.ts';
+import { CosDISettings } from './CosDISettings.ts';
 
 export function hasInjectMetadata(type: Function): boolean {
     const info = getInjectTypeInfo(type);

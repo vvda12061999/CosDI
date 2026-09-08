@@ -1,6 +1,6 @@
-import { IInjectParameter } from '../IInjectParameter';
-import { IObjectResolver } from '../IObjectResolver';
-import { TypeKey } from '../Token';
+import { IInjectParameter } from '../IInjectParameter.ts';
+import { IObjectResolver } from '../IObjectResolver.ts';
+import { TypeKey } from '../Token.ts';
 
 export class TypedParameter implements IInjectParameter {
     constructor(

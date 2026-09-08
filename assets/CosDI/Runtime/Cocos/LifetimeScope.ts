@@ -1,15 +1,15 @@
 import { _decorator, Component, Node, instantiate, Constructor, director } from 'cc';
-import { IObjectResolver } from '../IObjectResolver';
-import { IContainerBuilder, ContainerBuilder } from '../ContainerBuilder';
-import { AmbientResolver } from '../AmbientResolver';
-import { CosDISettings } from './CosDISettings';
-import { DiagnosticsContext } from '../../Diagnostics/DiagnosticsContext';
-import { DiagnosticsBridge } from '../../Diagnostics/DiagnosticsBridge';
-import { IInstaller } from './IInstaller';
-import { ActionInstaller } from './ActionInstaller';
-import { injectNode, injectScene } from './ObjectResolverCocosExtensions';
-import { EntryPointsBuilder } from './ContainerBuilderCocosExtensions';
-import { CosDIParentTypeReferenceNotFound } from '../CosDIException';
+import { IObjectResolver } from '../IObjectResolver.ts';
+import { IContainerBuilder, ContainerBuilder } from '../ContainerBuilder.ts';
+import { AmbientResolver } from '../AmbientResolver.ts';
+import { CosDISettings } from './CosDISettings.ts';
+import { DiagnosticsContext } from '../../Diagnostics/DiagnosticsContext.ts';
+import { DiagnosticsBridge } from '../../Diagnostics/DiagnosticsBridge.ts';
+import { IInstaller } from './IInstaller.ts';
+import { ActionInstaller } from './ActionInstaller.ts';
+import { injectNode, injectScene } from './ObjectResolverCocosExtensions.ts';
+import { EntryPointsBuilder } from './ContainerBuilderCocosExtensions.ts';
+import { CosDIParentTypeReferenceNotFound } from '../CosDIException.ts';
 
 const { ccclass, property, executionOrder } = _decorator;
 

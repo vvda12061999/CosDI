@@ -1,9 +1,9 @@
 import { Component, Constructor, Node, Prefab } from 'cc';
-import { RegistrationBuilder } from '../RegistrationBuilder';
-import { Lifetime } from '../Lifetime';
-import { Registration } from '../Registration';
-import { IObjectResolver } from '../IObjectResolver';
-import { InjectorCache } from '../Internal/InjectorCache';
+import { RegistrationBuilder } from '../RegistrationBuilder.ts';
+import { Lifetime } from '../Lifetime.ts';
+import { Registration } from '../Registration.ts';
+import { IObjectResolver } from '../IObjectResolver.ts';
+import { InjectorCache } from '../Internal/InjectorCache.ts';
 import {
     ComponentDestination,
     createDestination,
@@ -11,7 +11,7 @@ import {
     FindComponentProvider,
     NewNodeProvider,
     PrefabComponentProvider,
-} from './ComponentProviders';
+} from './ComponentProviders.ts';
 
 enum ComponentSource {
     Instance,

@@ -1,8 +1,8 @@
-import { AmbientResolver } from '../AmbientResolver';
-import { InjectorCache } from '../Internal/InjectorCache';
-import { ORIGINAL_CTOR, IS_INJECTABLE, copyInjectMetadata } from '../Internal/InjectMetadata';
-import { applyConstructorInjection } from '../Internal/ConstructorInjection';
-import { TypeKey } from '../Token';
+import { AmbientResolver } from '../AmbientResolver.ts';
+import { InjectorCache } from '../Internal/InjectorCache.ts';
+import { ORIGINAL_CTOR, IS_INJECTABLE, copyInjectMetadata } from '../Internal/InjectMetadata.ts';
+import { applyConstructorInjection } from '../Internal/ConstructorInjection.ts';
+import { TypeKey } from '../Token.ts';
 
 export function wrapInjectable(ctor: Function): Function {
     if ((ctor as any)[IS_INJECTABLE]) {
