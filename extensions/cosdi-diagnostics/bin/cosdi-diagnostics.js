@@ -80,11 +80,18 @@ function findProjectRoot(start) {
 }
 
 function resolveProjectRoot(options) {
+    // Asking for a project by name and being given the one you happen to be
+    // standing in is worse than being told nothing is there.
+    if (options.project) {
+        return findProjectRoot(options.project);
+    }
+
     const candidates = [
-        options.project,
         process.env.COSDI_PROJECT,
-        process.env.INIT_CWD,
+        // Ahead of INIT_CWD, which npm sets to wherever npm was run from: a
+        // command run inside a project means that project, not that one.
         process.cwd(),
+        process.env.INIT_CWD,
     ];
     for (const candidate of candidates) {
         if (!candidate) {

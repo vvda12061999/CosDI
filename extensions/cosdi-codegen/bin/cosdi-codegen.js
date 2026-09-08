@@ -94,12 +94,21 @@ function findProjectRoot(start) {
     return '';
 }
 
+const NO_PROJECT = 'Could not find a Cocos Creator project. Run this from the project root or pass --project <path>.';
+
 function resolveProjectRoot(options) {
+    // Asking for a project by name and being given the one you happen to be
+    // standing in is worse than being told nothing is there.
+    if (options.project) {
+        return findProjectRoot(options.project);
+    }
+
     const candidates = [
-        options.project,
         process.env.COSDI_PROJECT,
-        process.env.INIT_CWD,
+        // Ahead of INIT_CWD, which npm sets to wherever npm was run from: a
+        // command run inside a project means that project, not that one.
         process.cwd(),
+        process.env.INIT_CWD,
     ];
     for (const candidate of candidates) {
         if (!candidate) {
@@ -192,8 +201,7 @@ function validate(projectRoot, strict) {
 function install(options) {
     const projectRoot = resolveProjectRoot(options);
     if (!projectRoot) {
-        const hint = 'Could not find a Cocos Creator project. Run this from the project root or pass --project <path>.';
-        warn(hint);
+        warn(NO_PROJECT);
         return options.fromPostinstall;
     }
 
@@ -225,7 +233,7 @@ function install(options) {
 function uninstall(options) {
     const projectRoot = resolveProjectRoot(options);
     if (!projectRoot) {
-        warn('Could not find a Cocos Creator project. Pass --project <path>.');
+        warn(NO_PROJECT);
         return false;
     }
     const dest = extensionDir(projectRoot);
@@ -245,7 +253,7 @@ function uninstall(options) {
 function status(options) {
     const projectRoot = resolveProjectRoot(options);
     if (!projectRoot) {
-        warn('Could not find a Cocos Creator project. Pass --project <path>.');
+        warn(NO_PROJECT);
         return false;
     }
     const dest = extensionDir(projectRoot);
@@ -286,7 +294,11 @@ function main() {
             break;
         case 'generate':
         case 'tokens': {
-            const projectRoot = resolveProjectRoot(options) || process.cwd();
+            const projectRoot = resolveProjectRoot(options);
+            if (!projectRoot) {
+                warn(NO_PROJECT);
+                return 1;
+            }
             ok = generate(projectRoot, options.check);
             if (!ok) {
                 warn('Tokens are out of date. Run: npx cosdi-codegen generate');
@@ -295,7 +307,11 @@ function main() {
         }
         case 'validate':
         case 'check': {
-            const projectRoot = resolveProjectRoot(options) || process.cwd();
+            const projectRoot = resolveProjectRoot(options);
+            if (!projectRoot) {
+                warn(NO_PROJECT);
+                return 1;
+            }
             ok = validate(projectRoot, options.strict);
             if (!ok) {
                 warn('Fix the problems above, or silence one with "validate": { "ignore": [...] } in cosdi.codegen.json.');

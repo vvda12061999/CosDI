@@ -5,7 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const assert = require('assert');
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 
 const root = path.resolve(__dirname, '..');
 const cli = path.join(root, 'extensions', 'cosdi-codegen', 'bin', 'cosdi-codegen.js');
@@ -13,6 +13,10 @@ const project = fs.mkdtempSync(path.join(os.tmpdir(), 'cosdi-project-'));
 
 function run(...args) {
     return execFileSync(process.execPath, [cli, ...args], { cwd: project, encoding: 'utf8' });
+}
+
+function escapeForRegExp(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 try {
@@ -60,6 +64,24 @@ try {
         encoding: 'utf8',
     });
     assert.ok(fs.existsSync(path.join(installed, 'package.json')), 'install from a nested cwd failed');
+
+    // npm sets INIT_CWD to wherever npm was run, which is not where the
+    // command is standing. The project it is standing in is the one it means.
+    const elsewhere = spawnSync(process.execPath, [cli, 'status'], {
+        cwd: project,
+        encoding: 'utf8',
+        env: Object.assign({}, process.env, { INIT_CWD: root, COSDI_PROJECT: '' }),
+    });
+    assert.match(elsewhere.stdout, new RegExp('Project: ' + escapeForRegExp(fs.realpathSync(project))));
+
+    // A --project that is not a project is worth saying so, rather than
+    // quietly generating into whichever project the shell happens to be in.
+    const nowhere = spawnSync(process.execPath, [cli, 'generate', '--project', os.tmpdir()], {
+        cwd: project,
+        encoding: 'utf8',
+    });
+    assert.strictEqual(nowhere.status, 1, 'a missing project is a failure');
+    assert.match(nowhere.stdout + nowhere.stderr, /Could not find a Cocos Creator project/);
 
     console.log('cosdi-codegen install/generate/uninstall OK');
 } finally {
