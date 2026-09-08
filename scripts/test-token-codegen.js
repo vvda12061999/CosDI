@@ -2,7 +2,10 @@
 'use strict';
 
 const assert = require('assert');
-const { transformSource } = require('../extensions/cosdi/lib/token-codegen.js');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { transformSource, generateTokens, loadConfig } = require('../extensions/cosdi/lib/token-codegen.js');
 
 const run = (source) => transformSource(source, {});
 let failed = 0;
@@ -174,6 +177,116 @@ check('handles several interfaces in one file', () => {
 check('leaves untagged files untouched', () => {
     const source = ['export interface IFoo {', '    a: number;', '}', ''].join('\n');
     assert.strictEqual(run(source).text, source);
+});
+
+function project(files, config) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cosdi-codegen-'));
+    for (const name of Object.keys(files)) {
+        const file = path.join(root, name);
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, files[name], 'utf8');
+    }
+    if (config) {
+        fs.writeFileSync(path.join(root, 'cosdi.codegen.json'), JSON.stringify(config), 'utf8');
+    }
+    return root;
+}
+
+const tagged = (name) => ['/** @createToken */', 'export interface ' + name + ' {', '    a: number;', '}', ''].join('\n');
+
+check('config falls back to defaults', () => {
+    const root = project({ 'assets/Scripts/A.ts': tagged('IA') });
+    const config = loadConfig(root);
+    assert.deepStrictEqual(config.roots, [path.join(root, 'assets')]);
+    assert.strictEqual(config.mode, 'inline');
+    assert.strictEqual(config.generateOnSave, true);
+    assert.strictEqual(config.error, null);
+});
+
+check('config narrows the roots that are scanned', () => {
+    const root = project({
+        'assets/Scripts/A.ts': tagged('IA'),
+        'assets/Legacy/B.ts': tagged('IB'),
+    }, { roots: ['assets/Scripts'] });
+    const result = generateTokens(loadConfig(root));
+    assert.strictEqual(result.tokens, 1);
+    assert.ok(fs.readFileSync(path.join(root, 'assets/Scripts/A.ts'), 'utf8').indexOf('cosdi:token') > 0);
+    assert.strictEqual(fs.readFileSync(path.join(root, 'assets/Legacy/B.ts'), 'utf8').indexOf('cosdi:token'), -1);
+});
+
+check('config reports broken JSON instead of throwing', () => {
+    const root = project({});
+    fs.writeFileSync(path.join(root, 'cosdi.codegen.json'), '{ oops', 'utf8');
+    const config = loadConfig(root);
+    assert.ok(/not valid JSON/.test(config.error), String(config.error));
+    assert.deepStrictEqual(config.roots, [path.join(root, 'assets')]);
+});
+
+check('a single file can be regenerated on its own', () => {
+    const root = project({
+        'assets/Scripts/A.ts': tagged('IA'),
+        'assets/Scripts/B.ts': tagged('IB'),
+    });
+    const config = loadConfig(root);
+    const result = generateTokens(Object.assign({}, config, { files: [path.join(root, 'assets/Scripts/A.ts')] }));
+    assert.strictEqual(result.scanned, 1);
+    assert.ok(fs.readFileSync(path.join(root, 'assets/Scripts/A.ts'), 'utf8').indexOf('cosdi:token') > 0);
+    assert.strictEqual(fs.readFileSync(path.join(root, 'assets/Scripts/B.ts'), 'utf8').indexOf('cosdi:token'), -1);
+});
+
+check('file mode keeps sources untouched', () => {
+    const source = tagged('IA');
+    const root = project({ 'assets/Scripts/A.ts': source }, { mode: 'file', out: 'assets/Tokens.generated.ts' });
+    const config = loadConfig(root);
+    const result = generateTokens(config);
+    assert.strictEqual(fs.readFileSync(path.join(root, 'assets/Scripts/A.ts'), 'utf8'), source);
+    const generated = fs.readFileSync(path.join(root, 'assets/Tokens.generated.ts'), 'utf8');
+    assert.ok(generated.indexOf("import type { IA as IA_ } from './Scripts/A';") > 0, generated);
+    assert.ok(generated.indexOf('export type IA = IA_;') > 0, generated);
+    assert.ok(generated.indexOf("export const IA = createToken<IA_>('IA');") > 0, generated);
+    assert.strictEqual(result.changed.length, 1);
+    assert.strictEqual(generateTokens(loadConfig(root)).changed.length, 0, 'second run is a no-op');
+});
+
+check('file mode clears inline tokens left from the other mode', () => {
+    const root = project({ 'assets/Scripts/A.ts': tagged('IA') });
+    generateTokens(loadConfig(root));
+    assert.ok(fs.readFileSync(path.join(root, 'assets/Scripts/A.ts'), 'utf8').indexOf('cosdi:token') > 0);
+
+    fs.writeFileSync(path.join(root, 'cosdi.codegen.json'), JSON.stringify({ mode: 'file' }), 'utf8');
+    generateTokens(loadConfig(root));
+    const source = fs.readFileSync(path.join(root, 'assets/Scripts/A.ts'), 'utf8');
+    assert.strictEqual(source.indexOf('cosdi:token'), -1, 'inline token removed');
+    assert.ok(fs.existsSync(path.join(root, 'assets/cosdi-tokens.generated.ts')));
+});
+
+check('file mode reports duplicate interface names', () => {
+    const root = project({
+        'assets/Scripts/A.ts': tagged('IDup'),
+        'assets/Scripts/B.ts': tagged('IDup'),
+    }, { mode: 'file' });
+    const result = generateTokens(loadConfig(root));
+    assert.strictEqual(result.tokens, 1);
+    assert.ok(/already generated from/.test(result.warnings[0]), String(result.warnings[0]));
+});
+
+check('file mode removes the module when the last tag goes', () => {
+    const root = project({ 'assets/Scripts/A.ts': tagged('IA') }, { mode: 'file' });
+    generateTokens(loadConfig(root));
+    const out = path.join(root, 'assets/cosdi-tokens.generated.ts');
+    assert.ok(fs.existsSync(out));
+
+    fs.writeFileSync(path.join(root, 'assets/Scripts/A.ts'), tagged('IA').replace('/** @createToken */\n', ''), 'utf8');
+    generateTokens(loadConfig(root));
+    assert.strictEqual(fs.existsSync(out), false);
+});
+
+check('check mode writes nothing', () => {
+    const source = tagged('IA');
+    const root = project({ 'assets/Scripts/A.ts': source });
+    const result = generateTokens(Object.assign({}, loadConfig(root), { check: true }));
+    assert.strictEqual(result.changed.length, 1);
+    assert.strictEqual(fs.readFileSync(path.join(root, 'assets/Scripts/A.ts'), 'utf8'), source);
 });
 
 if (failed) {

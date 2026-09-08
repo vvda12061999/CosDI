@@ -281,17 +281,10 @@ function importEdit(text, masked, comments, eol, importFrom) {
     return { at: afterBanner(text, comments), text: line + eol + eol };
 }
 
-/**
- * Rewrites one file's source. Generated lines are dropped and rebuilt from the
- * tags that are present, so running this repeatedly is a no-op.
- */
-function transformSource(source, options) {
-    const importFrom = (options && options.importFrom) || 'cosdi';
-    const eol = detectEol(source);
-    const text = stripGenerated(source);
+/** Every tagged interface in `text`, with the reason for each one skipped. */
+function findTagged(text) {
     const { masked, comments } = maskCode(text);
-    const edits = [];
-    const tokens = [];
+    const targets = [];
     const warnings = [];
 
     for (const comment of comments) {
@@ -308,12 +301,30 @@ function transformSource(source, options) {
             warnings.push('@createToken skipped: ' + target.name + ' already has a value declaration');
             continue;
         }
+        target.tokenName = tag[1] || target.name;
+        targets.push(target);
+    }
 
-        const tokenName = tag[1] || target.name;
+    return { masked, comments, targets, warnings };
+}
+
+/**
+ * Rewrites one file's source. Generated lines are dropped and rebuilt from the
+ * tags that are present, so running this repeatedly is a no-op.
+ */
+function transformSource(source, options) {
+    const importFrom = (options && options.importFrom) || 'cosdi';
+    const eol = detectEol(source);
+    const text = stripGenerated(source);
+    const { masked, comments, targets, warnings } = findTagged(text);
+    const edits = [];
+    const tokens = [];
+
+    for (const target of targets) {
         const line = target.indent + (target.exported ? 'export ' : '')
-            + 'const ' + target.name + ' = createToken<' + target.name + ">('" + tokenName + "'); // " + MARKER;
+            + 'const ' + target.name + ' = createToken<' + target.name + ">('" + target.tokenName + "'); // " + MARKER;
         edits.push({ at: endOfLine(text, target.end), text: eol + line });
-        tokens.push({ name: target.name, tokenName });
+        tokens.push({ name: target.name, tokenName: target.tokenName });
     }
 
     if (!tokens.length) {
@@ -333,7 +344,8 @@ function transformSource(source, options) {
     return { text: output, tokens, warnings };
 }
 
-function collectFiles(root, files) {
+function collectFiles(root, files, exclude) {
+    const skip = exclude ? SKIP_DIRS.concat(exclude) : SKIP_DIRS;
     let entries;
     try {
         entries = fs.readdirSync(root, { withFileTypes: true });
@@ -343,8 +355,8 @@ function collectFiles(root, files) {
     for (const entry of entries) {
         const full = path.join(root, entry.name);
         if (entry.isDirectory()) {
-            if (SKIP_DIRS.indexOf(entry.name) < 0) {
-                collectFiles(full, files);
+            if (skip.indexOf(entry.name) < 0) {
+                collectFiles(full, files, exclude);
             }
         } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts')) {
             files.push(full);
@@ -353,38 +365,192 @@ function collectFiles(root, files) {
     return files;
 }
 
-/**
- * Generates tokens for every tagged interface under `roots`.
- * With `check`, nothing is written and `changed` lists the stale files.
- */
-function generateTokens(options) {
-    const roots = (options && options.roots) || [];
-    const check = !!(options && options.check);
-    const result = { scanned: 0, tokens: 0, changed: [], warnings: [] };
+const DEFAULT_CONFIG = {
+    roots: ['assets'],
+    exclude: [],
+    mode: 'inline',
+    out: 'assets/cosdi-tokens.generated.ts',
+    generateOnSave: true,
+    importFrom: 'cosdi',
+};
 
-    for (const root of roots) {
-        for (const file of collectFiles(root, [])) {
-            const source = fs.readFileSync(file, 'utf8');
-            if (source.indexOf('@createToken') < 0 && source.indexOf(MARKER) < 0) {
-                result.scanned++;
-                continue;
-            }
-            const output = transformSource(source, options);
-            result.scanned++;
-            result.tokens += output.tokens.length;
-            for (const warning of output.warnings) {
-                result.warnings.push(file + ': ' + warning);
-            }
-            if (output.text !== source) {
-                result.changed.push(file);
-                if (!check) {
-                    fs.writeFileSync(file, output.text, 'utf8');
-                }
+/**
+ * Reads `cosdi.codegen.json` from the project root. Every field is optional;
+ * a missing or unreadable file just means the defaults apply.
+ */
+function loadConfig(projectRoot) {
+    const file = path.join(projectRoot, 'cosdi.codegen.json');
+    let raw = {};
+    let error = null;
+    if (fs.existsSync(file)) {
+        try {
+            raw = JSON.parse(fs.readFileSync(file, 'utf8')) || {};
+        } catch (parseError) {
+            error = 'cosdi.codegen.json is not valid JSON: ' + parseError.message;
+            raw = {};
+        }
+    }
+
+    const roots = Array.isArray(raw.roots) && raw.roots.length ? raw.roots : DEFAULT_CONFIG.roots;
+    return {
+        projectRoot,
+        roots: roots.map((root) => path.resolve(projectRoot, root)),
+        exclude: Array.isArray(raw.exclude) ? raw.exclude : DEFAULT_CONFIG.exclude,
+        mode: raw.mode === 'file' ? 'file' : DEFAULT_CONFIG.mode,
+        out: path.resolve(projectRoot, raw.out || DEFAULT_CONFIG.out),
+        generateOnSave: raw.generateOnSave !== false,
+        importFrom: raw.importFrom || DEFAULT_CONFIG.importFrom,
+        error,
+    };
+}
+
+function importSpecifier(fromFile, toFile) {
+    let relative = path.relative(path.dirname(fromFile), toFile).split(path.sep).join('/');
+    relative = relative.replace(/\.ts$/, '');
+    return relative.startsWith('.') ? relative : './' + relative;
+}
+
+/** Builds the single module that holds every token in `file` mode. */
+function buildTokensModule(entries, out, importFrom, eol) {
+    const lines = [
+        '// Generated by CosDI from @createToken interfaces. Do not edit.',
+        "import { createToken } from '" + importFrom + "';",
+    ];
+    for (const entry of entries) {
+        lines.push('import type { ' + entry.name + ' as ' + entry.alias + " } from '"
+            + importSpecifier(out, entry.file) + "';");
+    }
+    lines.push('');
+    for (const entry of entries) {
+        lines.push('export type ' + entry.name + ' = ' + entry.alias + ';');
+        lines.push('export const ' + entry.name + ' = createToken<' + entry.alias + ">('" + entry.tokenName + "');");
+    }
+    return lines.join(eol) + eol;
+}
+
+function writeIfChanged(file, text, check, result) {
+    let current = null;
+    if (fs.existsSync(file)) {
+        current = fs.readFileSync(file, 'utf8');
+    }
+    if (current === text) {
+        return;
+    }
+    result.changed.push(file);
+    if (!check) {
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, text, 'utf8');
+    }
+}
+
+function generateInline(files, options, result) {
+    for (const file of files) {
+        const source = fs.readFileSync(file, 'utf8');
+        result.scanned++;
+        if (source.indexOf('@createToken') < 0 && source.indexOf(MARKER) < 0) {
+            continue;
+        }
+        const output = transformSource(source, options);
+        result.tokens += output.tokens.length;
+        if (output.tokens.length) {
+            result.sources.push(file);
+        }
+        for (const warning of output.warnings) {
+            result.warnings.push(file + ': ' + warning);
+        }
+        if (output.text !== source) {
+            result.changed.push(file);
+            if (!options.check) {
+                fs.writeFileSync(file, output.text, 'utf8');
             }
         }
+    }
+}
+
+function generateToModule(files, options, result) {
+    const entries = [];
+    const seen = Object.create(null);
+
+    for (const file of files) {
+        const source = fs.readFileSync(file, 'utf8');
+        result.scanned++;
+        if (source.indexOf('@createToken') < 0 && source.indexOf(MARKER) < 0) {
+            continue;
+        }
+        // Inline tokens would shadow the generated module, so clear them out.
+        const stripped = stripGenerated(source);
+        if (stripped !== source) {
+            result.changed.push(file);
+            if (!options.check) {
+                fs.writeFileSync(file, stripped, 'utf8');
+            }
+        }
+
+        const found = findTagged(stripped);
+        for (const warning of found.warnings) {
+            result.warnings.push(file + ': ' + warning);
+        }
+        if (!found.targets.length) {
+            continue;
+        }
+        result.sources.push(file);
+        for (const target of found.targets) {
+            if (seen[target.name]) {
+                result.warnings.push(file + ': @createToken skipped: ' + target.name
+                    + ' is already generated from ' + seen[target.name]);
+                continue;
+            }
+            seen[target.name] = file;
+            entries.push({ name: target.name, tokenName: target.tokenName, alias: target.name + '_', file });
+            result.tokens++;
+        }
+    }
+
+    entries.sort((a, b) => (a.name < b.name ? -1 : 1));
+    if (!entries.length) {
+        if (fs.existsSync(options.out)) {
+            result.changed.push(options.out);
+            if (!options.check) {
+                fs.unlinkSync(options.out);
+            }
+        }
+        return;
+    }
+    writeIfChanged(options.out, buildTokensModule(entries, options.out, options.importFrom || 'cosdi', '\n'), options.check, result);
+}
+
+/**
+ * Generates tokens for the tagged interfaces under `roots`, or for `files`
+ * alone when only part of the tree needs revisiting. With `check`, nothing is
+ * written and `changed` lists what is stale.
+ */
+function generateTokens(options) {
+    const settings = options || {};
+    const result = { scanned: 0, tokens: 0, changed: [], sources: [], warnings: [] };
+    let files = settings.files;
+
+    if (!files) {
+        files = [];
+        for (const root of settings.roots || []) {
+            collectFiles(root, files, settings.exclude);
+        }
+    }
+
+    if (settings.mode === 'file') {
+        generateToModule(files, settings, result);
+    } else {
+        generateInline(files, settings, result);
     }
 
     return result;
 }
 
-module.exports = { MARKER, generateTokens, transformSource, collectFiles };
+module.exports = {
+    MARKER,
+    DEFAULT_CONFIG,
+    loadConfig,
+    generateTokens,
+    transformSource,
+    findTagged,
+    collectFiles,
+};

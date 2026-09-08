@@ -2,17 +2,22 @@
 'use strict';
 
 const path = require('path');
-const { generateTokens } = require('../extensions/cosdi/lib/token-codegen.js');
+const { loadConfig, generateTokens } = require('../extensions/cosdi/lib/token-codegen.js');
 
 const root = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);
 const check = args.indexOf('--check') >= 0;
-const roots = args.filter((arg) => !arg.startsWith('--')).map((arg) => path.resolve(root, arg));
+const overrides = args.filter((arg) => !arg.startsWith('--')).map((arg) => path.resolve(root, arg));
 
-const result = generateTokens({
-    roots: roots.length ? roots : [path.join(root, 'assets')],
+const config = loadConfig(root);
+if (config.error) {
+    console.warn('[CosDI] ' + config.error);
+}
+
+const result = generateTokens(Object.assign({}, config, {
+    roots: overrides.length ? overrides : config.roots,
     check,
-});
+}));
 
 for (const warning of result.warnings) {
     console.warn('[CosDI] ' + path.relative(root, warning));

@@ -23,9 +23,13 @@ function copyDir(src, dest) {
 const command = process.argv[2] || 'install';
 
 if (command === 'tokens') {
-    const { generateTokens } = require('../lib/token-codegen.js');
+    const { loadConfig, generateTokens } = require('../lib/token-codegen.js');
     const check = process.argv.indexOf('--check') >= 0;
-    const result = generateTokens({ roots: [path.join(process.cwd(), 'assets')], check });
+    const config = loadConfig(process.cwd());
+    if (config.error) {
+        console.warn('[CosDI] ' + config.error);
+    }
+    const result = generateTokens(Object.assign({}, config, { check }));
     for (const warning of result.warnings) {
         console.warn('[CosDI] ' + warning);
     }
