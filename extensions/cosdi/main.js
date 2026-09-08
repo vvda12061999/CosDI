@@ -216,10 +216,22 @@ function generateProjectTokens(quiet) {
     }
     if (result.changed.length) {
         console.log('[CosDI] Wrote interface tokens in ' + result.changed.length + ' file(s)');
+        reimport(result.changed);
     } else if (!quiet) {
         console.log('[CosDI] Interface tokens are up to date (' + result.tokens + ' token' + (result.tokens === 1 ? '' : 's') + ')');
     }
     return result;
+}
+
+/** Reimports the files just written so the editor compiles the new tokens. */
+function reimport(files) {
+    const assets = projectAssetsDir();
+    for (const file of files) {
+        const url = 'db://assets/' + path.relative(assets, file).split(path.sep).join('/');
+        Promise.resolve()
+            .then(() => Editor.Message.request('asset-db', 'refresh-asset', url))
+            .catch(() => undefined);
+    }
 }
 
 function scheduleTokenGeneration(info) {
