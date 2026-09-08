@@ -1,0 +1,102 @@
+{
+  "package_version": 2,
+  "version": "1.0.0",
+  "name": "cosdi-diagnostics",
+  "title": "CosDI Diagnostics",
+  "description": "CosDI Diagnostics panel for Cocos Creator 3.x — live scope tree, registrations and benchmark results",
+  "author": "vvda12061999",
+  "license": "MIT",
+  "homepage": "https://github.com/vvda12061999/CosDI",
+  "bugs": {
+    "url": "https://github.com/vvda12061999/CosDI/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vvda12061999/CosDI.git",
+    "directory": "extensions/cosdi-diagnostics"
+  },
+  "keywords": [
+    "cocos",
+    "cocos-creator",
+    "cocos-creator-extension",
+    "di",
+    "dependency-injection",
+    "diagnostics",
+    "cosdi"
+  ],
+  "peerDependencies": {
+    "cosdi": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "cosdi": {
+      "optional": true
+    }
+  },
+  "bin": {
+    "cosdi-diagnostics": "./bin/cosdi-diagnostics.js"
+  },
+  "scripts": {
+    "postinstall": "node ./bin/cosdi-diagnostics.js install --from-postinstall"
+  },
+  "files": [
+    "bin",
+    "i18n",
+    "main.js",
+    "package.json",
+    "panels",
+    "scene.js",
+    "static",
+    "LICENSE",
+    "README.md"
+  ],
+  "editor": ">=3.0.0",
+  "main": "./main.js",
+  "panels": {
+    "default": {
+      "title": "CosDI Diagnostics",
+      "type": "dockable",
+      "main": "./panels/default.js",
+      "icon": "./static/icon.png",
+      "flags": {
+        "resizable": true,
+        "save": true,
+        "alwaysOnTop": false
+      },
+      "size": {
+        "min-width": 320,
+        "min-height": 150,
+        "width": 520,
+        "height": 360
+      }
+    }
+  },
+  "contributions": {
+    "menu": [
+      {
+        "path": "i18n:menu.panel",
+        "label": "CosDI Diagnostics",
+        "message": "open-panel"
+      },
+      {
+        "path": "CosDI",
+        "label": "Diagnostics",
+        "message": "open-panel"
+      }
+    ],
+    "messages": {
+      "open-panel": {
+        "methods": [
+          "openPanel"
+        ]
+      },
+      "get-snapshot": {
+        "methods": [
+          "getSnapshot"
+        ]
+      }
+    },
+    "scene": {
+      "script": "./scene.js"
+    }
+  }
+}
