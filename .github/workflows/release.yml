@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Pack extension zip
+        run: node scripts/pack-extension.js
+
+      - name: Read package version
+        id: version
+        run: echo "version=$(node -p "require('./extensions/cosdi/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Check tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="${{ steps.version.outputs.version }}"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "Tag v$TAG does not match extensions/cosdi/package.json version $PKG"
+            exit 1
+          fi
+
+      - name: GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', steps.version.outputs.version) }}
+          name: CosDI ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: |
+            cosdi.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish npm
+        working-directory: extensions/cosdi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "NPM_TOKEN is not set. Skipping npm publish."
+            echo "Add a Granular Access Token (Automation) as the NPM_TOKEN repo secret."
+            exit 0
+          fi
+          npm publish --access public

@@ -10,6 +10,8 @@
 
 <p align="center">
   <a href="https://github.com/vvda12061999/CosDI/stargazers"><img src="https://img.shields.io/github/stars/vvda12061999/CosDI?style=social" alt="GitHub stars"></a>
+  <a href="https://www.npmjs.com/package/cosdi"><img src="https://img.shields.io/npm/v/cosdi" alt="npm"></a>
+  <a href="https://github.com/vvda12061999/CosDI/actions/workflows/ci.yml"><img src="https://github.com/vvda12061999/CosDI/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/Cocos%20Creator-3.8.8-00d4aa" alt="Cocos Creator 3.8.8">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License">
 </p>
@@ -24,16 +26,28 @@ CosDI ports the [VContainer](https://github.com/hadashiA/VContainer) mental mode
 
 ---
 
-## Install (Cocos Extension Manager)
+## Install
 
-Install CosDI the same way as any other Creator extension: import a zip, then enable it. You do **not** copy folders by hand.
+Install CosDI like any other Creator extension. You do **not** copy folders by hand.
 
-1. Download [`cosdi.zip`](https://github.com/vvda12061999/CosDI/raw/master/cosdi.zip) from this repo (or run `scripts/pack-extension.ps1` to rebuild it).
+### Option A — Extension zip (GitHub Release)
+
+1. Download [`cosdi.zip`](https://github.com/vvda12061999/CosDI/releases/latest/download/cosdi.zip) from the latest release.
 2. Open your game in **Cocos Creator 3.8+**.
-3. **Extension → Extension Manager**.
-4. Open the **Project** tab and click **+** (Import).
-5. Select `cosdi.zip`.
-6. Find **CosDI** in the list and **Enable** it.
+3. **Extension → Extension Manager → Project → +** (Import).
+4. Select `cosdi.zip`, then **Enable** CosDI.
+
+### Option B — npm
+
+From your Cocos Creator **project root**:
+
+```bash
+npx cosdi install
+```
+
+Then **Extension → Extension Manager → Project → Enable CosDI**.
+
+You can also `npm install cosdi` and copy `node_modules/cosdi` to `extensions/cosdi`.
 
 Enabling the extension:
 
@@ -54,9 +68,31 @@ import {
 } from 'db://assets/CosDI/Runtime/index';
 ```
 
-To refresh the library after updating the zip: import/replace the extension (or **CosDI → Install Runtime into Project**), then enable it again.
+To refresh after an update: import the new zip (or run `npx cosdi install` again), then **CosDI → Install Runtime into Project**.
 
 Creator’s packer does not honor a project `import-map.json` alias, so keep the `db://assets/CosDI/Runtime/index` path.
+
+---
+
+## Releasing (GitHub Actions + npm)
+
+Every push/PR to `master` packs `cosdi.zip` in CI. Pushing a version tag publishes a [GitHub Release](https://github.com/vvda12061999/CosDI/releases) and the [`cosdi`](https://www.npmjs.com/package/cosdi) npm package.
+
+1. Create an npm [Automation access token](https://www.npmjs.com/settings/~/tokens).
+2. In the GitHub repo: **Settings → Secrets and variables → Actions → New repository secret**
+   - Name: `NPM_TOKEN`
+   - Value: the npm token
+3. Bump the version and push a tag:
+
+```bash
+node scripts/bump-version.js 1.0.1
+git add extensions/cosdi/package.json assets/CosDI/package.json
+git commit -m "Release v1.0.1"
+git tag v1.0.1
+git push origin master --tags
+```
+
+The tag (`v1.0.1`) must match `extensions/cosdi/package.json`. You can also run the **Release** workflow manually from the Actions tab.
 
 ---
 
@@ -199,7 +235,8 @@ extensions/cosdi/             ← import this (or cosdi.zip) in Extension Manage
   runtime/                    copied into assets/CosDI on enable
   panels/                     CosDI Diagnostics editor tab
 assets/Scripts/               sample scene scripts + benchmarks
-cosdi.zip                     ready to import
+cosdi.zip                     built by CI / scripts/pack-extension.js
+
 ```
 
 ---

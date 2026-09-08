@@ -25,3 +25,7 @@ node_modules/
 
 # Generated when the CosDI extension installs the runtime
 assets/CosDI/.installed-version
+
+# Built by scripts/pack-extension.mjs / GitHub Actions
+cosdi.zip
+

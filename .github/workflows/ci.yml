@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Pack extension zip
+        run: node scripts/pack-extension.js
+      - name: Check zip
+        run: |
+          test -f cosdi.zip
+          unzip -l cosdi.zip | grep -q package.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cosdi.zip
+          path: cosdi.zip

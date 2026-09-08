@@ -1,16 +1,11 @@
 # CosDI Creator extension
 
-This folder is the installable Cocos Creator **3.8+** extension.
+Import this folder (or `cosdi.zip`) in **Extension → Extension Manager → Project**.
 
-## For users
+```bash
+npx cosdi install
+```
 
-1. Zip the **contents** of this folder (`package.json` must be at the zip root).
-2. In Creator: **Extension → Extension Manager → Project → +**
-3. Choose `cosdi.zip`
-4. **Enable** CosDI
+Run that from your Cocos Creator project root, then enable **CosDI** in Extension Manager.
 
-Enabling copies the DI runtime into `assets/CosDI` and opens the Diagnostics panel from **Panel → CosDI Diagnostics**.
-
-## For this repo
-
-`runtime/` is the library that gets installed into a project. After changing `assets/CosDI` in the sample, run `scripts/pack-extension.ps1` to refresh `runtime/` and rebuild `cosdi.zip`.
+Enabling copies the DI runtime into `assets/CosDI`.
