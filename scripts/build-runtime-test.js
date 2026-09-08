@@ -48,14 +48,15 @@ function buildRuntime() {
         JSON.stringify({
             compilerOptions: {
                 target: 'ES2019',
+                // `moduleResolution` and `baseUrl` are left out: TypeScript 7
+                // removed the values that belong here, and `commonjs` on its
+                // own resolves the same way on every version.
                 module: 'commonjs',
-                moduleResolution: 'node',
                 strict: false,
                 experimentalDecorators: true,
                 skipLibCheck: true,
                 esModuleInterop: true,
                 outDir: 'out',
-                baseUrl: '.',
                 paths: { cc: ['./cc-stub.ts'] },
             },
             include: ['src/**/*.ts', 'cc-stub.ts'],
@@ -81,4 +82,4 @@ function buildRuntime() {
     return path.join(work, 'out', 'src', 'Runtime');
 }
 
-module.exports = { buildRuntime };
+module.exports = { buildRuntime, copySources };
