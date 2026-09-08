@@ -1,0 +1,40 @@
+{
+  "package_version": 2,
+  "name": "cosdi",
+  "version": "1.0.0",
+  "title": "CosDI",
+  "description": "CosDI diagnostics panel — VContainer-style registration and resolve traces for Cocos Creator.",
+  "author": "CosDI",
+  "editor": ">=3.8.0",
+  "main": "./main.js",
+  "panels": {
+    "diagnostics": {
+      "title": "CosDI Diagnostics",
+      "type": "dockable",
+      "main": "./panels/diagnostics.js",
+      "size": {
+        "min-width": 420,
+        "min-height": 320,
+        "width": 760,
+        "height": 520
+      }
+    }
+  },
+  "contributions": {
+    "menu": [
+      {
+        "path": "Panel/CosDI/Diagnostics",
+        "label": "CosDI Diagnostics",
+        "message": "open-diagnostics"
+      }
+    ],
+    "messages": {
+      "open-diagnostics": {
+        "methods": ["openDiagnostics"]
+      }
+    },
+    "scene": {
+      "script": "./scene.js"
+    }
+  }
+}
