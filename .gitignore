@@ -23,9 +23,9 @@ node_modules/
 #//////////////////////////
 .idea/
 
-# Generated when the CosDI extension installs the runtime
-assets/CosDI/.installed-version
+# Written when cosdi-diagnostics copies itself into a project
+extensions/cosdi-diagnostics/.installed-version
 
-# Built by scripts/pack-extension.mjs / GitHub Actions
-cosdi.zip
+# Built by scripts/pack-extension.js / GitHub Actions
+cosdi-diagnostics.zip
 

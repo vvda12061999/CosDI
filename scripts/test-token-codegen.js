@@ -5,7 +5,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { transformSource, generateTokens, loadConfig } = require('../extensions/cosdi/lib/token-codegen.js');
+const { transformSource, generateTokens, loadConfig } = require('../extensions/cosdi-codegen/lib/token-codegen.js');
 
 const run = (source) => transformSource(source, {});
 let failed = 0;
@@ -180,7 +180,7 @@ check('leaves untagged files untouched', () => {
 });
 
 function project(files, config) {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cosdi-codegen-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cosdi-codegen-test-'));
     for (const name of Object.keys(files)) {
         const file = path.join(root, name);
         fs.mkdirSync(path.dirname(file), { recursive: true });

@@ -19,12 +19,15 @@ jobs:
           node-version: 20
           registry-url: https://registry.npmjs.org
 
+      - name: Check versions are in sync
+        run: node scripts/check-versions.js
+
       - name: Pack extension zip
         run: node scripts/pack-extension.js
 
       - name: Read package version
         id: version
-        run: echo "version=$(node -p "require('./extensions/cosdi/package.json').version")" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(node -p "require('./extensions/cosdi-diagnostics/package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Check tag matches package.json
         if: startsWith(github.ref, 'refs/tags/')
@@ -32,7 +35,7 @@ jobs:
           TAG="${GITHUB_REF_NAME#v}"
           PKG="${{ steps.version.outputs.version }}"
           if [ "$TAG" != "$PKG" ]; then
-            echo "Tag v$TAG does not match extensions/cosdi/package.json version $PKG"
+            echo "Tag v$TAG does not match extensions/cosdi-diagnostics/package.json version $PKG"
             exit 1
           fi
 
@@ -43,11 +46,11 @@ jobs:
           name: CosDI ${{ steps.version.outputs.version }}
           generate_release_notes: true
           files: |
-            cosdi.zip
+            cosdi-diagnostics.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish npm
+      - name: Publish cosdi to npm
         working-directory: assets/CosDI
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -58,3 +61,14 @@ jobs:
             exit 0
           fi
           npm publish --access public
+
+      - name: Publish cosdi-diagnostics to npm
+        working-directory: extensions/cosdi-diagnostics
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "NPM_TOKEN is not set. Skipping npm publish."
+            exit 0
+          fi
+          npm publish --access public --ignore-scripts

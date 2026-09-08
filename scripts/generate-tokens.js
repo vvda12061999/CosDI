@@ -2,7 +2,7 @@
 'use strict';
 
 const path = require('path');
-const { loadConfig, generateTokens } = require('../extensions/cosdi/lib/token-codegen.js');
+const { loadConfig, generateTokens } = require('../extensions/cosdi-codegen/lib/token-codegen.js');
 
 const root = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);

@@ -1,0 +1,49 @@
+{
+  "package_version": 2,
+  "version": "1.0.0",
+  "name": "cosdi-codegen",
+  "title": "CosDI Codegen",
+  "description": "Writes the createToken constant for every interface tagged with /** @createToken */",
+  "author": "vvda12061999",
+  "license": "MIT",
+  "homepage": "https://github.com/vvda12061999/CosDI",
+  "bugs": {
+    "url": "https://github.com/vvda12061999/CosDI/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vvda12061999/CosDI.git",
+    "directory": "extensions/cosdi-codegen"
+  },
+  "bin": {
+    "cosdi-codegen": "./bin/cosdi-codegen.js"
+  },
+  "editor": ">=3.0.0",
+  "main": "./main.js",
+  "contributions": {
+    "menu": [
+      {
+        "path": "CosDI",
+        "label": "Generate Interface Tokens",
+        "message": "generate-tokens"
+      }
+    ],
+    "messages": {
+      "generate-tokens": {
+        "methods": ["generateTokens"]
+      },
+      "asset-db:asset-add": {
+        "methods": ["onAssetChange"]
+      },
+      "asset-db:asset-change": {
+        "methods": ["onAssetChange"]
+      },
+      "asset-db:asset-changed": {
+        "methods": ["onAssetChange"]
+      },
+      "asset-db:ready": {
+        "methods": ["onAssetDbReady"]
+      }
+    }
+  }
+}
