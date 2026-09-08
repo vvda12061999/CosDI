@@ -11,12 +11,14 @@ import { CosDIException } from './CosDIException.ts';
 import { IContainerBuilder, ScopedContainerBuilder } from './ContainerBuilder.ts';
 import { isDisposable } from './IDisposable.ts';
 import { isRegistration } from './IObjectResolverExtensions.ts';
+import type { DependencyGraph } from './DependencyGraph.ts';
 
 export class ScopedContainer implements IScopedObjectResolver {
     readonly root: IObjectResolver;
     readonly parent: IScopedObjectResolver | null;
     readonly applicationOrigin: object | null;
     diagnostics: DiagnosticsCollector | null = null;
+    dependencyGraph: DependencyGraph | null = null;
 
     private readonly registry: Registry;
     private readonly sharedInstances = new Map<Registration, Lazy<object>>();
@@ -154,6 +156,7 @@ export class ScopedContainer implements IScopedObjectResolver {
 export class Container implements IObjectResolver {
     readonly applicationOrigin: object | null;
     diagnostics: DiagnosticsCollector | null = null;
+    dependencyGraph: DependencyGraph | null = null;
 
     private readonly registry: Registry;
     private readonly rootScope: IScopedObjectResolver;

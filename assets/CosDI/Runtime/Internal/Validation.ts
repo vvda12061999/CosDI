@@ -1,8 +1,8 @@
+import { DependencyGraph, DependencyEdge, DependencyNode, buildDependencyGraph } from '../DependencyGraph.ts';
 import { IScopedObjectResolver } from '../IObjectResolver.ts';
 import { Registration } from '../Registration.ts';
 import { TypeKey, typeKeyName } from '../Token.ts';
-import { findCircularDependencies } from './CircularDependency.ts';
-import { dependenciesOf } from './Dependencies.ts';
+import { cycleProblems } from './CircularDependency.ts';
 import { Registry } from './Registry.ts';
 
 export type ValidationProblemKind = 'cycle' | 'missing' | 'keyless' | 'unconstructible';
@@ -31,89 +31,70 @@ export function validateRegistrations(
     registry: Registry,
     parent: IScopedObjectResolver | null = null,
 ): ValidationProblem[] {
-    const problems: ValidationProblem[] = findCircularDependencies(registrations, registry);
-    for (const registration of registrations) {
-        validateRegistration(registration, registry, parent, problems);
+    return validateGraph(buildDependencyGraph(registrations, registry, parent));
+}
+
+/** The same, off a graph that has already been built. */
+export function validateGraph(graph: DependencyGraph): ValidationProblem[] {
+    const problems: ValidationProblem[] = cycleProblems(graph);
+    for (const node of graph.nodes) {
+        if (node.scope === 'local') {
+            validateNode(node, problems);
+        }
     }
     return problems;
 }
 
-function validateRegistration(
-    registration: Registration,
-    registry: Registry,
-    parent: IScopedObjectResolver | null,
-    problems: ValidationProblem[],
-): void {
-    const injection = registration.provider.injection ?? 'none';
-    if (injection === 'none') {
+function validateNode(node: DependencyNode, problems: ValidationProblem[]): void {
+    const registration = node.registration;
+    if ((registration.provider.injection ?? 'none') === 'none') {
         return;
     }
 
-    const type = registration.implementationType;
-    if (typeof type !== 'function') {
+    if (typeof node.type !== 'function') {
         problems.push({
             kind: 'unconstructible',
             registration,
-            type,
-            message: `${typeKeyName(type)} is registered as something to construct, but it is a key, not a class. `
-                + `Register the class and name it with .as(${typeKeyName(type)}), `
+            type: node.type,
+            message: `${node.name} is registered as something to construct, but it is a key, not a class. `
+                + `Register the class and name it with .as(${node.name}), `
                 + 'or hand over an instance with registerInstance / registerFactory.',
         });
         return;
     }
 
-    const name = typeKeyName(type);
-    for (const dependency of dependenciesOf(registration)) {
-        if (dependency.token == null) {
+    for (const edge of node.edges) {
+        if (edge.status === 'keyless') {
             problems.push({
                 kind: 'keyless',
                 registration,
-                type,
-                message: `${name} has no key for ${dependency.site}: nothing registered goes by that name. `
-                    + hint(dependency.kind, dependency.name),
+                type: node.type,
+                message: `${node.name} has no key for ${edge.site}: nothing registered goes by that name. `
+                    + hint(edge),
             });
             continue;
         }
-        if (isRegistered(dependency.token, dependency.key, registry, parent)) {
+        if (edge.status !== 'missing') {
             continue;
         }
         problems.push({
             kind: 'missing',
             registration,
-            type: dependency.token,
-            message: `${name} asks for ${typeKeyName(dependency.token)} (${dependency.site}), which nothing registers`
-                + `${dependency.key == null ? '' : ` with Key: ${String(dependency.key)}`}.`,
+            type: edge.token ?? null,
+            message: `${node.name} asks for ${typeKeyName(edge.token as TypeKey)} (${edge.site}), which nothing registers`
+                + `${edge.key == null ? '' : ` with Key: ${String(edge.key)}`}.`,
         });
     }
 }
 
-function hint(kind: string, name: string): string {
-    if (kind === 'field') {
-        return `Name the key, as in @inject(${pascal(name)}).`;
+function hint(edge: DependencyEdge): string {
+    if (edge.kind === 'field') {
+        return `Name the key, as in @inject(${pascal(edge.name)}).`;
     }
-    if (kind === 'parameter') {
-        return `Pass it to @injectable(...) in constructor order, or give it a value with .withParameter('${name}', ...).`;
+    if (edge.kind === 'parameter') {
+        return `Pass it to @injectable(...) in constructor order, or give it a value with .withParameter('${edge.name}', ...).`;
     }
     return 'Name the key on the parameter.';
-}
-
-function isRegistered(
-    token: TypeKey,
-    key: object | undefined,
-    registry: Registry,
-    parent: IScopedObjectResolver | null,
-): boolean {
-    if (registry.exists(token, key)) {
-        return true;
-    }
-    let scope = parent;
-    while (scope != null) {
-        if (scope.tryGetRegistration(token, key)) {
-            return true;
-        }
-        scope = scope.parent;
-    }
-    return false;
 }
 
 function pascal(name: string): string {

@@ -3,6 +3,8 @@ import { DiagnosticsInfo } from './DiagnosticsInfo.ts';
 import { Registration } from '../Runtime/Registration.ts';
 import { typeKeyName } from '../Runtime/Token.ts';
 import { Lifetime } from '../Runtime/Lifetime.ts';
+import { cycleText } from '../Runtime/DependencyGraph.ts';
+import type { DependencyGraph } from '../Runtime/DependencyGraph.ts';
 import type { IObjectResolver } from '../Runtime/IObjectResolver.ts';
 
 export interface DiagnosticsRegistrationSnapshot {
@@ -15,10 +17,38 @@ export interface DiagnosticsRegistrationSnapshot {
     dependencies: string[];
 }
 
+export interface DiagnosticsGraphEdgeSnapshot {
+    site: string;
+    kind: string;
+    status: string;
+    token: string;
+    /** Indexes into the scope graph's nodes. Empty when nothing answers it. */
+    targets: number[];
+}
+
+export interface DiagnosticsGraphNodeSnapshot {
+    id: number;
+    name: string;
+    lifetime: string;
+    source: string;
+    scope: string;
+    contracts: string[];
+    edges: DiagnosticsGraphEdgeSnapshot[];
+    dependents: number[];
+}
+
+export interface DiagnosticsGraphSnapshot {
+    nodes: DiagnosticsGraphNodeSnapshot[];
+    roots: number[];
+    cycles: string[];
+}
+
 export interface DiagnosticsScopeSnapshot {
     scopeName: string;
     parentScopeName: string;
     registrations: DiagnosticsRegistrationSnapshot[];
+    /** What the container was built with, before anything is resolved. */
+    graph?: DiagnosticsGraphSnapshot;
 }
 
 export interface DiagnosticsBenchmarkRow {
@@ -155,14 +185,17 @@ export class DiagnosticsContext {
     static toJSON(): DiagnosticsSnapshot {
         const scopes: DiagnosticsScopeSnapshot[] = [];
         const parentByName = new Map<string, string>();
+        const graphByName = new Map<string, DiagnosticsGraphSnapshot | undefined>();
         collectors.forEach((collector) => {
             parentByName.set(collector.scopeName, collector.parentScopeName || '');
+            graphByName.set(collector.scopeName, graphSnapshot(collector.dependencyGraph));
         });
 
         this.getGroupedDiagnosticsInfos().forEach((infos, scopeName) => {
             scopes.push({
                 scopeName,
                 parentScopeName: parentByName.get(scopeName) || '',
+                graph: graphByName.get(scopeName),
                 registrations: infos.map((info) => ({
                     type: typeKeyName(info.registerInfo.registrationBuilder.implementationType),
                     lifetime: info.resolveInfo
@@ -184,6 +217,7 @@ export class DiagnosticsContext {
                 scopes.push({
                     scopeName: collector.scopeName,
                     parentScopeName: collector.parentScopeName || '',
+                    graph: graphByName.get(collector.scopeName),
                     registrations: [],
                 });
             }
@@ -195,6 +229,33 @@ export class DiagnosticsContext {
             benchmark: currentBenchmark || undefined,
         };
     }
+}
+
+/** Flattens the graph to names and indexes, which is all the panel can read. */
+function graphSnapshot(graph: DependencyGraph | null): DiagnosticsGraphSnapshot | undefined {
+    if (!graph || graph.nodes.length === 0) {
+        return undefined;
+    }
+    return {
+        nodes: graph.nodes.map((node) => ({
+            id: node.id,
+            name: node.name,
+            lifetime: Lifetime[node.lifetime],
+            source: node.source,
+            scope: node.scope,
+            contracts: node.contracts.filter((contract) => contract !== node.type).map(typeKeyName),
+            dependents: node.dependents.map((dependent) => dependent.id),
+            edges: node.edges.map((edge) => ({
+                site: edge.site,
+                kind: edge.kind,
+                status: edge.status,
+                token: edge.token == null ? edge.name : typeKeyName(edge.token),
+                targets: edge.targets.map((target) => target.id),
+            })),
+        })),
+        roots: graph.roots.map((node) => node.id),
+        cycles: graph.cycles.map(cycleText),
+    };
 }
 
 function publishDiagnosticsSnapshot(force = false): void {

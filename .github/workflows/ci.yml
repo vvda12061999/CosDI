@@ -30,6 +30,9 @@ jobs:
       - name: Circular dependency tests
         run: node scripts/test-circular.js
 
+      - name: Dependency graph tests
+        run: node scripts/test-graph.js
+
       - name: Token codegen tests
         run: node scripts/test-token-codegen.js
 

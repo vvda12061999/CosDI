@@ -7,11 +7,14 @@ import { RegistrationBuilder } from '../Runtime/RegistrationBuilder.ts';
 import { Lifetime } from '../Runtime/Lifetime.ts';
 import { CollectionInstanceProvider } from '../Runtime/Internal/InstanceProviders.ts';
 import type { IObjectResolver } from '../Runtime/IObjectResolver.ts';
+import type { DependencyGraph } from '../Runtime/DependencyGraph.ts';
 
 export class DiagnosticsCollector {
     private readonly diagnosticsInfos: DiagnosticsInfo[] = [];
     private readonly resolveCallStack: DiagnosticsInfo[] = [];
     parentScopeName = '';
+    /** What the scope's container was built with, kept for the panel. */
+    dependencyGraph: DependencyGraph | null = null;
 
     constructor(public readonly scopeName: string) {}
 
@@ -67,6 +70,7 @@ export class DiagnosticsCollector {
     }
 
     notifyContainerBuilt(container: IObjectResolver): void {
+        this.dependencyGraph = container.dependencyGraph ?? null;
         DiagnosticsContext.notifyContainerBuilt(container);
     }
 }

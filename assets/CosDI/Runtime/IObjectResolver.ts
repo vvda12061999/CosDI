@@ -3,12 +3,15 @@ import { Registration } from './Registration.ts';
 import { ServiceKey, ServiceTypes, TypeKey, TypeKeyOf, createToken } from './Token.ts';
 import { IDisposable } from './IDisposable.ts';
 import type { IContainerBuilder } from './ContainerBuilder.ts';
+import type { DependencyGraph } from './DependencyGraph.ts';
 
 export const ObjectResolverToken = createToken<IObjectResolver>('IObjectResolver');
 
 export interface IObjectResolver extends IDisposable {
     readonly applicationOrigin: object | null;
     diagnostics: DiagnosticsCollector | null;
+    /** What was registered and what it asks for, read at build time. */
+    readonly dependencyGraph?: DependencyGraph | null;
 
     resolve<K extends ServiceKey>(serviceKey: K, key?: object): ServiceTypes[K];
     resolve<T>(type: TypeKeyOf<T>, key?: object): T;

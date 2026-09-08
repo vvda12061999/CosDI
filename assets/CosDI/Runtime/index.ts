@@ -28,15 +28,24 @@ export type { IInjector } from './IInjector.ts';
 export type { IInstanceProvider, ProviderInjection } from './IInstanceProvider.ts';
 export type { IInjectParameter } from './IInjectParameter.ts';
 export { Registration } from './Registration.ts';
-export { validateRegistrations } from './Internal/Validation.ts';
+export { validateRegistrations, validateGraph } from './Internal/Validation.ts';
 export type { ValidationProblem, ValidationProblemKind } from './Internal/Validation.ts';
 export { findCircularDependencies } from './Internal/CircularDependency.ts';
+export {
+    DependencyGraph, buildDependencyGraph, dependencyGraphOf,
+    dependencyGraphText, dependencyGraphMermaid, cycleText,
+} from './DependencyGraph.ts';
+export type {
+    DependencyNode, DependencyEdge, DependencyCycle, DependencyStatus,
+    DependencySource, DependencyGraphTextOptions,
+} from './DependencyGraph.ts';
+export type { DependencyKind } from './Internal/Dependencies.ts';
 export { RegistrationBuilder } from './RegistrationBuilder.ts';
 export { ObjectResolverToken } from './IObjectResolver.ts';
 export type { IObjectResolver, IScopedObjectResolver } from './IObjectResolver.ts';
 export { Container, ScopedContainer } from './Container.ts';
 export { ContainerBuilder, ScopedContainerBuilder } from './ContainerBuilder.ts';
-export type { IContainerBuilder } from './ContainerBuilder.ts';
+export type { IContainerBuilder, BuiltRegistry } from './ContainerBuilder.ts';
 export { registerDisposeCallback } from './ContainerBuilderExtensions.ts';
 export {
     resolveOf, tryResolveOf, resolveOrDefault, resolveAllOf, resolveOrParameter,
@@ -74,6 +83,9 @@ export type {
     DiagnosticsRegistrationSnapshot,
     DiagnosticsBenchmarkSnapshot,
     DiagnosticsBenchmarkRow,
+    DiagnosticsGraphSnapshot,
+    DiagnosticsGraphNodeSnapshot,
+    DiagnosticsGraphEdgeSnapshot,
 } from '../Diagnostics/DiagnosticsContext.ts';
 export { DiagnosticsBridge } from '../Diagnostics/DiagnosticsBridge.ts';
 export { DiagnosticsOverlay } from '../Diagnostics/DiagnosticsOverlay.ts';
