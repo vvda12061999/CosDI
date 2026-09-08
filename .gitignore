@@ -22,3 +22,6 @@ node_modules/
 # WebStorm
 #//////////////////////////
 .idea/
+
+# Generated when the CosDI extension installs the runtime
+assets/CosDI/.installed-version

@@ -1,5 +1,5 @@
 'use strict';
 
 module.exports = {
-    description: 'CosDI diagnostics panel',
+    description: '面向 Cocos Creator 的 VContainer 风格依赖注入。导入并启用扩展后，运行时会自动安装到 assets/CosDI。',
 };

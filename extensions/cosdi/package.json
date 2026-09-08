@@ -3,44 +3,46 @@
   "version": "1.0.0",
   "name": "cosdi",
   "title": "CosDI",
-  "description": "CosDI diagnostics panel",
-  "author": "CosDI",
+  "description": "i18n:cosdi.description",
+  "author": "vvda12061999",
   "editor": ">=3.8.0",
   "main": "./main.js",
-    "panels": {
-      "default": {
-        "title": "CosDI Diagnostics",
-        "type": "dockable",
-        "main": "./panels/default.js",
-        "flags": {
-          "resizable": true,
-          "save": true,
-          "alwaysOnTop": false
-        },
-        "size": {
-          "min-width": 320,
-          "min-height": 150,
-          "width": 520,
-          "height": 360
-        }
+  "panels": {
+    "default": {
+      "title": "CosDI Diagnostics",
+      "type": "dockable",
+      "main": "./panels/default.js",
+      "icon": "./static/icon.png",
+      "flags": {
+        "resizable": true,
+        "save": true,
+        "alwaysOnTop": false
       },
-      "diagnostics": {
-        "title": "CosDI Diagnostics",
-        "type": "dockable",
-        "main": "./panels/diagnostics.js",
-        "flags": {
-          "resizable": true,
-          "save": true,
-          "alwaysOnTop": false
-        },
-        "size": {
-          "min-width": 320,
-          "min-height": 150,
-          "width": 520,
-          "height": 360
-        }
+      "size": {
+        "min-width": 320,
+        "min-height": 150,
+        "width": 520,
+        "height": 360
       }
     },
+    "diagnostics": {
+      "title": "CosDI Diagnostics",
+      "type": "dockable",
+      "main": "./panels/diagnostics.js",
+      "icon": "./static/icon.png",
+      "flags": {
+        "resizable": true,
+        "save": true,
+        "alwaysOnTop": false
+      },
+      "size": {
+        "min-width": 320,
+        "min-height": 150,
+        "width": 520,
+        "height": 360
+      }
+    }
+  },
   "contributions": {
     "menu": [
       {
@@ -57,6 +59,11 @@
         "path": "CosDI",
         "label": "Diagnostics",
         "message": "open-panel"
+      },
+      {
+        "path": "CosDI",
+        "label": "Install Runtime into Project",
+        "message": "install-runtime"
       }
     ],
     "messages": {
@@ -65,6 +72,9 @@
       },
       "get-snapshot": {
         "methods": ["getSnapshot"]
+      },
+      "install-runtime": {
+        "methods": ["installRuntime"]
       }
     },
     "scene": {

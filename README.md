@@ -24,20 +24,24 @@ CosDI ports the [VContainer](https://github.com/hadashiA/VContainer) mental mode
 
 ---
 
-## Install into another Cocos project
+## Install (Cocos Extension Manager)
 
-This repository is a Creator **3.8.8** sample. To use CosDI in your own game, copy two folders:
+Install CosDI the same way as any other Creator extension: import a zip, then enable it. You do **not** copy folders by hand.
 
-| Package | Copy to |
-| --- | --- |
-| Runtime DI | `assets/CosDI/` |
-| Editor diagnostics | `extensions/cosdi/` |
+1. Download [`cosdi.zip`](https://github.com/vvda12061999/CosDI/raw/master/cosdi.zip) from this repo (or run `scripts/pack-extension.ps1` to rebuild it).
+2. Open your game in **Cocos Creator 3.8+**.
+3. **Extension → Extension Manager**.
+4. Open the **Project** tab and click **+** (Import).
+5. Select `cosdi.zip`.
+6. Find **CosDI** in the list and **Enable** it.
 
-Then:
+Enabling the extension:
 
-1. Reopen the project (or refresh the asset database).
-2. **Extension Manager → Project → enable `cosdi`**.
-3. Import from the runtime entry:
+- Installs the DI runtime into `assets/CosDI`
+- Starts the diagnostics listener
+- Adds **Panel → CosDI Diagnostics**
+
+Then import from:
 
 ```ts
 import {
@@ -49,6 +53,8 @@ import {
     injectable,
 } from 'db://assets/CosDI/Runtime/index';
 ```
+
+To refresh the library after updating the zip: import/replace the extension (or **CosDI → Install Runtime into Project**), then enable it again.
 
 Creator’s packer does not honor a project `import-map.json` alias, so keep the `db://assets/CosDI/Runtime/index` path.
 
@@ -187,11 +193,13 @@ Sample results from Preview in Editor on Cocos Creator 3.8.8 (diagnostics off):
 ## Project layout
 
 ```
-assets/CosDI/                 runtime package (copy this)
-  Runtime/                    container, tokens, lifetimes, LifetimeScope
-  Diagnostics/                snapshot bridge used by the editor panel
-extensions/cosdi/             editor package (copy this)
+extensions/cosdi/             ← import this (or cosdi.zip) in Extension Manager
+  package.json
+  main.js                     installs runtime + diagnostics
+  runtime/                    copied into assets/CosDI on enable
+  panels/                     CosDI Diagnostics editor tab
 assets/Scripts/               sample scene scripts + benchmarks
+cosdi.zip                     ready to import
 ```
 
 ---
@@ -201,6 +209,7 @@ assets/Scripts/               sample scene scripts + benchmarks
 - Do not put `@` on constructor parameters. Creator’s compiler can leave the `@` in the emitted JS.
 - Do not put `@injectable()` on `Component` subclasses. The engine constructs those; use field `@inject`.
 - `CosDISettings.enableDiagnostics` defaults to `true` so the editor panel can receive play-mode data. Turn it off in shipping builds if you want zero tracer cost.
+- After Enable, **CosDI → Install Runtime into Project** re-copies `assets/CosDI` if you updated the extension zip.
 
 ---
 

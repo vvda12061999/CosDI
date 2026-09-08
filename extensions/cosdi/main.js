@@ -1,8 +1,13 @@
 'use strict';
 
+const fs = require('fs');
 const http = require('http');
+const path = require('path');
 
 const PORT = 38477;
+const RUNTIME_DIR = path.join(__dirname, 'runtime');
+const FOLDER_META = path.join(__dirname, 'static', 'CosDI.folder.meta');
+
 let snapshot = { scopes: [], collectedAt: 0, empty: true };
 let server = null;
 let lastLogKey = '';
@@ -91,6 +96,58 @@ function stopServer() {
     server = null;
 }
 
+function copyDir(src, dest) {
+    fs.mkdirSync(dest, { recursive: true });
+    const entries = fs.readdirSync(src, { withFileTypes: true });
+    for (const entry of entries) {
+        const from = path.join(src, entry.name);
+        const to = path.join(dest, entry.name);
+        if (entry.isDirectory()) {
+            copyDir(from, to);
+        } else {
+            fs.copyFileSync(from, to);
+        }
+    }
+}
+
+function projectAssetsDir() {
+    return path.join(Editor.Project.path, 'assets');
+}
+
+function installRuntime() {
+    if (!fs.existsSync(RUNTIME_DIR)) {
+        console.warn('[CosDI] Extension runtime folder is missing.');
+        return false;
+    }
+    const assetsDir = projectAssetsDir();
+    const dest = path.join(assetsDir, 'CosDI');
+    copyDir(RUNTIME_DIR, dest);
+    if (fs.existsSync(FOLDER_META)) {
+        fs.copyFileSync(FOLDER_META, path.join(assetsDir, 'CosDI.meta'));
+    }
+    const version = readExtensionVersion();
+    fs.writeFileSync(path.join(dest, '.installed-version'), version, 'utf8');
+    console.log('[CosDI] Runtime installed to assets/CosDI (v' + version + ')');
+    refreshAssets();
+    return true;
+}
+
+function readExtensionVersion() {
+    try {
+        const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
+        return String(pkg.version || '1.0.0');
+    } catch (_error) {
+        return '1.0.0';
+    }
+}
+
+function refreshAssets() {
+    Promise.resolve()
+        .then(() => Editor.Message.request('asset-db', 'refresh-asset', 'db://assets/CosDI'))
+        .catch(() => Editor.Message.request('asset-db', 'refresh'))
+        .catch(() => undefined);
+}
+
 exports.methods = {
     openPanel() {
         Editor.Panel.open('cosdi');
@@ -98,9 +155,13 @@ exports.methods = {
     getSnapshot() {
         return snapshot;
     },
+    installRuntime() {
+        return installRuntime();
+    },
 };
 
 exports.load = function () {
+    installRuntime();
     startServer();
     console.log('[CosDI] editor extension loaded');
 };
