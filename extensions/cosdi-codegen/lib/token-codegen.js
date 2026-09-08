@@ -380,6 +380,27 @@ const DEFAULT_CONFIG = {
     importFrom: 'cosdi',
 };
 
+/** How a failed check is treated when the project is built. */
+const ON_BUILD = ['error', 'warn', 'off'];
+const DEFAULT_VALIDATE = {
+    enabled: true,
+    validateOnSave: true,
+    onBuild: 'error',
+    ignore: [],
+    rules: {},
+};
+
+function readValidate(raw) {
+    const given = (raw && typeof raw.validate === 'object' && raw.validate) || {};
+    return {
+        enabled: given.enabled !== false,
+        validateOnSave: given.validateOnSave !== false,
+        onBuild: ON_BUILD.indexOf(given.onBuild) >= 0 ? given.onBuild : DEFAULT_VALIDATE.onBuild,
+        ignore: Array.isArray(given.ignore) ? given.ignore : DEFAULT_VALIDATE.ignore,
+        rules: (given.rules && typeof given.rules === 'object') ? given.rules : DEFAULT_VALIDATE.rules,
+    };
+}
+
 /**
  * Reads `cosdi.codegen.json` from the project root. Every field is optional;
  * a missing or unreadable file just means the defaults apply.
@@ -417,6 +438,7 @@ function loadConfig(projectRoot) {
         include: INCLUDES.indexOf(raw.include) >= 0 ? raw.include : DEFAULT_CONFIG.include,
         generateOnSave: raw.generateOnSave !== false,
         importFrom: raw.importFrom || DEFAULT_CONFIG.importFrom,
+        validate: readValidate(raw),
         error,
     };
 }
@@ -721,6 +743,8 @@ function generateTokens(options) {
 module.exports = {
     MARKER,
     DEFAULT_CONFIG,
+    DEFAULT_VALIDATE,
+    maskCode,
     loadConfig,
     generateTokens,
     transformSource,

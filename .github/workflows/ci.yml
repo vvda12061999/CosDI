@@ -36,6 +36,12 @@ jobs:
       - name: Token codegen tests
         run: node scripts/test-token-codegen.js
 
+      - name: DI analyzer tests
+        run: node scripts/test-di-analyzer.js
+
+      - name: Validate CLI and build hook tests
+        run: node scripts/test-validate-cli.js
+
       - name: Generate interface tokens
         run: node scripts/generate-tokens.js
 
@@ -56,6 +62,9 @@ jobs:
 
       - name: Install cosdi-codegen into a scratch project
         run: node scripts/test-codegen-install.js
+
+      - name: Validate this project's own dependency injection
+        run: node extensions/cosdi-codegen/bin/cosdi-codegen.js validate --project . --strict
 
       - name: Pack extension zip
         run: node scripts/pack-extension.js

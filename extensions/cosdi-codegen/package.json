@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "name": "cosdi-codegen",
   "title": "CosDI Codegen",
-  "description": "Writes the runtime token for every interface tagged @generateToken, outside the assets folder",
+  "description": "Writes the runtime token for every interface tagged @generateToken, and checks the project dependency injection before it builds",
   "author": "vvda12061999",
   "license": "MIT",
   "homepage": "https://github.com/vvda12061999/CosDI",
@@ -42,6 +42,8 @@
     "bin",
     "lib",
     "main.js",
+    "builder.js",
+    "build-hooks.js",
     "package.json",
     "LICENSE",
     "README.md"
@@ -54,24 +56,45 @@
         "path": "CosDI",
         "label": "Generate Interface Tokens",
         "message": "generate-tokens"
+      },
+      {
+        "path": "CosDI",
+        "label": "Validate Dependencies",
+        "message": "validate-di"
       }
     ],
     "messages": {
       "generate-tokens": {
-        "methods": ["generateTokens"]
+        "methods": [
+          "generateTokens"
+        ]
+      },
+      "validate-di": {
+        "methods": [
+          "validateProject"
+        ]
       },
       "asset-db:asset-add": {
-        "methods": ["onAssetChange"]
+        "methods": [
+          "onAssetChange"
+        ]
       },
       "asset-db:asset-change": {
-        "methods": ["onAssetChange"]
+        "methods": [
+          "onAssetChange"
+        ]
       },
       "asset-db:asset-changed": {
-        "methods": ["onAssetChange"]
+        "methods": [
+          "onAssetChange"
+        ]
       },
       "asset-db:ready": {
-        "methods": ["onAssetDbReady"]
+        "methods": [
+          "onAssetDbReady"
+        ]
       }
-    }
+    },
+    "builder": "./builder.js"
   }
 }

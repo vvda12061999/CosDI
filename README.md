@@ -34,6 +34,7 @@ If this saves you time in a Cocos project, please **[⭐ star the repo](https://
    - [Register in a LifetimeScope](#register-in-a-lifetimescope)
    - [What build() checks](#what-build-checks)
    - [The dependency graph](#the-dependency-graph)
+   - [Checked before the game runs](#checked-before-the-game-runs)
    - [Inject a component field](#inject-a-component-field)
    - [`new Player()` fills constructor deps](#new-player-fills-constructor-deps)
 3. [Proof of concept](#3-proof-of-concept)
@@ -306,6 +307,48 @@ graph.roots.filter((node) => node.lifetime === Lifetime.Singleton);
 Every edge says what answered it: `local` here, `parent` in a scope above, `missing` when nothing registers it, `keyless` when nothing says what to inject. A scope's graph lists what its parents registered as nodes of its own, marked `from a parent scope`, so a child scope reads as what it can actually resolve.
 
 The **CosDI Diagnostics** panel draws the same graph under each scope while the game plays, next to the resolve counts. Keeping the graph costs a few hundred bytes per scope; `builder.keepDependencyGraph = false`, or `ContainerBuilder.keepGraphByDefault = false` for every builder, leaves `container.dependencyGraph` empty without changing what `build()` checks.
+
+### Checked before the game runs
+
+`build()` only runs once play reaches the scene that builds the container, which on a big project can be several menus in. The **CosDI Codegen** extension reads the same mistakes straight out of your sources, so a typo fails the build instead of the level:
+
+```bash
+npx cosdi-codegen validate            # 0 when the project is sound, 1 when it is not
+npx cosdi-codegen validate --strict   # warnings fail too
+```
+
+```
+assets/Scripts/Hud.ts:6:5  error  Hud asks for IPlayerServcie (field 'playerService'), which nothing
+in this project registers. [missing-registration]
+[CosDI Codegen] 5 file(s), 1 registration(s), 1 error(s), 0 warning(s)
+```
+
+The same check runs on every `.ts` save and from **CosDI → Validate Dependencies**, printing to the editor console, and again when you press **Build**, where an error stops the build before it packages anything. What it looks for:
+
+| Rule | Reported when |
+| --- | --- |
+| `missing-registration` | A key an `@inject` or `@injectable` asks for that nothing in the project registers |
+| `no-key` | A bare `@inject` or an unnamed constructor parameter whose name matches nothing registered |
+| `key-as-class` | `register(IPlayerService)` where `register(PlayerService).as(IPlayerService)` was meant |
+| `component-injectable` | `@injectable` on a `Component`, which Cocos constructs itself |
+| `parameter-decorator` | `@inject` on a constructor parameter, which Creator can leave in the emitted JavaScript |
+| `circular-dependency` | A loop, the same one `build()` would refuse |
+
+It reads decorators and registration calls, which say plainly what they are, and it treats every scope in the project as one pool of registrations, so a service registered in one scope and injected in another is not reported. A key held in a variable, or one a package registers from its own scope outside `roots`, cannot be read at all — those are the false positives to silence:
+
+```json
+{
+  "validate": {
+    "enabled": true,
+    "validateOnSave": true,
+    "onBuild": "error",
+    "ignore": ["IAdsService"],
+    "rules": { "no-key": "warn" }
+  }
+}
+```
+
+`onBuild` is `error`, `warn` or `off`, and each rule can be set to `error`, `warn` or `off`. One line is silenced by a `// cosdi-ignore` comment on it or above it. Nothing here replaces `build()`: the container still checks everything at run time, including the registrations only a running game has.
 
 ### Inject a component field
 

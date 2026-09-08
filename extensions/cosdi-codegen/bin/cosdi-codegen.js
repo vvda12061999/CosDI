@@ -4,6 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const { loadConfig, generateTokens } = require('../lib/token-codegen.js');
+const { analyzeProject, formatProblem } = require('../lib/di-analyzer.js');
 
 const EXTENSION_NAME = 'cosdi-codegen';
 const PACKAGE_ROOT = path.resolve(__dirname, '..');
@@ -18,12 +19,21 @@ function warn(message) {
 }
 
 function usage() {
-    console.log('Usage: npx cosdi-codegen <install|uninstall|status|generate> [--project <path>] [--check]');
+    console.log('Usage: npx cosdi-codegen <install|uninstall|status|generate|validate> [--project <path>] [--check] [--strict]');
     console.log('Run it from your Cocos Creator project root, or pass --project.');
+    console.log('  generate  writes the token for every @generateToken interface (--check only reports stale ones)');
+    console.log('  validate  reads the registrations and injection sites, and reports what would fail at run time');
 }
 
 function parseArgs(argv) {
-    const options = { command: 'install', project: '', fromPostinstall: false, force: false, check: false };
+    const options = {
+        command: 'install',
+        project: '',
+        fromPostinstall: false,
+        force: false,
+        check: false,
+        strict: false,
+    };
     const rest = [];
     for (let index = 0; index < argv.length; index += 1) {
         const arg = argv[index];
@@ -38,6 +48,8 @@ function parseArgs(argv) {
             options.force = true;
         } else if (arg === '--check') {
             options.check = true;
+        } else if (arg === '--strict') {
+            options.strict = true;
         } else {
             rest.push(arg);
         }
@@ -148,6 +160,35 @@ function generate(projectRoot, check) {
     return !(check && result.changed.length);
 }
 
+/**
+ * Reads the DI in the project's sources. This is what `build()` checks at run
+ * time, asked before the game runs, so a typo fails the build and not a scene.
+ */
+function validate(projectRoot, strict) {
+    const config = loadConfig(projectRoot);
+    if (config.error) {
+        warn(config.error);
+    }
+    if (!config.validate.enabled) {
+        log('Validation is off in cosdi.codegen.json');
+        return true;
+    }
+
+    const result = analyzeProject(config);
+    for (const problem of result.problems) {
+        const line = formatProblem(problem, projectRoot);
+        if (problem.severity === 'error') {
+            console.error(line);
+        } else {
+            console.warn(line);
+        }
+    }
+
+    log(result.scanned + ' file(s), ' + result.registrations + ' registration(s), '
+        + result.errors + ' error(s), ' + result.warnings + ' warning(s)');
+    return result.errors === 0 && !(strict && result.warnings > 0);
+}
+
 function install(options) {
     const projectRoot = resolveProjectRoot(options);
     if (!projectRoot) {
@@ -211,6 +252,7 @@ function status(options) {
     const config = loadConfig(projectRoot);
     log('Project: ' + projectRoot);
     log('Mode: ' + config.mode + ', output: ' + path.relative(projectRoot, config.out));
+    log('Validation: ' + (config.validate.enabled ? 'on, ' + config.validate.onBuild + ' on build' : 'off'));
     if (!fs.existsSync(path.join(dest, 'package.json'))) {
         log('Extension: not installed');
         return true;
@@ -248,6 +290,15 @@ function main() {
             ok = generate(projectRoot, options.check);
             if (!ok) {
                 warn('Tokens are out of date. Run: npx cosdi-codegen generate');
+            }
+            break;
+        }
+        case 'validate':
+        case 'check': {
+            const projectRoot = resolveProjectRoot(options) || process.cwd();
+            ok = validate(projectRoot, options.strict);
+            if (!ok) {
+                warn('Fix the problems above, or silence one with "validate": { "ignore": [...] } in cosdi.codegen.json.');
             }
             break;
         }
