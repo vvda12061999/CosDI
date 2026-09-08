@@ -81,20 +81,20 @@ export class ExampleService {
 
 ### Interface token
 
-Cocos erases `interface`, so it cannot hold a runtime token. Use `@createToken` on an abstract class:
+Cocos erases `interface`, so it cannot hold a runtime token. Keep the interface and let `createToken` supply the value under the same name:
 
 ```ts
-@createToken
-export abstract class IExampleService {
-    abstract name: string;
+export interface IExampleService {
+    name: string;
 }
+export const IExampleService = createToken<IExampleService>('IExampleService');
 
 export class ExampleService implements IExampleService {
     name = 'ExampleService';
 }
 ```
 
-Then bind and inject the token:
+`IExampleService` is now the interface in type position and the token in value position, so the same name works everywhere:
 
 ```ts
 builder.register(ExampleService, Lifetime.Singleton).as(IExampleService);
@@ -103,7 +103,13 @@ builder.register(ExampleService, Lifetime.Singleton).as(IExampleService);
 private exampleService: IExampleService;
 ```
 
-`createToken('IExampleService')` still works if you need a separate `interface` plus const.
+The token carries the interface type, so resolving it needs no cast:
+
+```ts
+const service = container.resolve(IExampleService); // IExampleService
+```
+
+No abstract class is required. `@createToken` on a class still works when you want a class to keep its own key.
 
 ### Register in a LifetimeScope
 

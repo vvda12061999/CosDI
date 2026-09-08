@@ -3,10 +3,10 @@ import { createToken, injectable, inject } from 'cosdi';
 
 const { ccclass } = _decorator;
 
-@createToken
-export abstract class IExampleService {
-    abstract name: string;
+export interface IExampleService {
+    name: string;
 }
+export const IExampleService = createToken<IExampleService>('IExampleService');
 
 export class ExampleService implements IExampleService {
     name = 'ExampleService';
