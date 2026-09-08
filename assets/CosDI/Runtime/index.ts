@@ -1,4 +1,8 @@
-export { CosDIException, CosDIParentTypeReferenceNotFound, CosDIValidationException } from './CosDIException.ts';
+export {
+    CosDIException, CosDIParentTypeReferenceNotFound, CosDIValidationException,
+    CosDIResolutionException, resolutionTree, traceResolution,
+} from './CosDIException.ts';
+export type { ResolutionStep } from './CosDIException.ts';
 export { Lifetime } from './Lifetime.ts';
 export { Token, createToken, typeKeyName, isToken, isServiceKey } from './Token.ts';
 export type { TypeKey, TypeKeyOf, ServiceKey, ServiceKeyHint } from './Token.ts';

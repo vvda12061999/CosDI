@@ -103,6 +103,25 @@ th, td {
 .graph .cycle {
   color: var(--color-warn-fill, #d0a020);
 }
+.failures {
+  margin-top: 8px;
+}
+.failures summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--color-danger-fill, #d9534f);
+}
+.failures .failure {
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  border-left: 2px solid var(--color-danger-fill, #d9534f);
+  font: 12px/1.5 Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+.failures .dim {
+  opacity: 0.65;
+}
 `,
     $: {
         refresh: '.refresh',
@@ -263,6 +282,7 @@ function renderScopes(scopes) {
             + '</tr></thead><tbody>'
             + (rows || '<tr><td colspan="5">No registrations yet</td></tr>')
             + '</tbody></table>'
+            + renderFailures(scope.failures)
             + renderGraph(scope.graph)
             + '</article>'
             + children.map((child) => renderScope(child, depth + 1)).join('');
@@ -273,6 +293,22 @@ function renderScopes(scopes) {
         .map((scope) => renderScope(scope, 0))
         .join('');
     return rendered + leftover;
+}
+
+/**
+ * Shows the resolves that threw, newest first. The console has them too, but
+ * they scroll away, and this keeps the walk that led to each one to hand.
+ */
+function renderFailures(failures) {
+    if (!failures || !failures.length) {
+        return '';
+    }
+    const items = failures.slice(0, 10).map((failure) => {
+        const repeats = failure.count > 1 ? ' <span class="dim">x' + failure.count + '</span>' : '';
+        return '<pre class="failure">' + escapeHtml(failure.message) + repeats + '</pre>';
+    }).join('');
+    const title = failures.length === 1 ? '1 failed resolve' : failures.length + ' failed resolves';
+    return '<details class="failures" open><summary>' + title + '</summary>' + items + '</details>';
 }
 
 /**

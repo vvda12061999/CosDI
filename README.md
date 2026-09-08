@@ -35,6 +35,7 @@ If this saves you time in a Cocos project, please **[⭐ star the repo](https://
    - [What build() checks](#what-build-checks)
    - [The dependency graph](#the-dependency-graph)
    - [Checked before the game runs](#checked-before-the-game-runs)
+   - [When a resolve fails anyway](#when-a-resolve-fails-anyway)
    - [Inject a component field](#inject-a-component-field)
    - [`new Player()` fills constructor deps](#new-player-fills-constructor-deps)
 3. [Proof of concept](#3-proof-of-concept)
@@ -349,6 +350,64 @@ It reads decorators and registration calls, which say plainly what they are, and
 ```
 
 `onBuild` is `error`, `warn` or `off`, and each rule can be set to `error`, `warn` or `off`. One line is silenced by a `// cosdi-ignore` comment on it or above it. Nothing here replaces `build()`: the container still checks everything at run time, including the registrations only a running game has.
+
+### When a resolve fails anyway
+
+Some registrations only exist while the game runs — a scope built from a prefab, a service a factory hands over — so a resolve can still fail with everything above it passing. When one does, the failure says who asked, all the way down:
+
+```
+CosDIResolutionException: Nothing registers IAudioService.
+
+  GameEntryPoint
+    field 'player' -> Player
+      constructor parameter 'inventory' -> InventoryService
+        constructor parameter 'audio' -> IAudioService (nothing registers it)
+
+  Looked in this scope and the 2 scopes above it. Register it with
+  builder.register(...).as(IAudioService), or ask with tryResolve when it is allowed to be missing.
+```
+
+The walk is put together as the failure passes back out through whatever asked, so it costs nothing until something goes wrong. Constructor parameters, `@inject` fields and injected methods all name themselves, which is usually enough to find the line without opening a debugger.
+
+The container says what else it knows about the key:
+
+| It saw | It says |
+| --- | --- |
+| A name close to one that is registered | `Did you mean IPlayerService?` |
+| The type registered, but under a key | `Music is registered, but only with key 'music'. Ask for it the same way: resolve(Music, 'music')` |
+| A key asked for that nothing keys | `Music is registered without a key. Drop the key, or register it with .keyed('music')` |
+
+Anything thrown by your own code keeps its type and its message — a constructor that gives up on a missing save file still throws whatever it threw, and `catch (error instanceof RangeError)` still catches it. The walk is appended to the stack, which is what a console prints:
+
+```
+RangeError: config.json is missing
+    at new SaveService (assets/Scripts/SaveService.ts:12:19)
+    ...
+
+CosDI was resolving:
+  GameEntryPoint
+    field 'save' -> SaveService
+      constructor <- threw here
+```
+
+A loop that `build()` cannot see, because a factory or a scope built later hides it, ends as a stack overflow. That overflow now names the type that comes round twice and keeps the deepest few frames of the walk instead of thousands:
+
+```
+RangeError: Maximum call stack size exceeded
+
+CosDI was resolving:
+  ... 881 more above
+  InventoryService
+    constructor parameter 'player' -> PlayerService
+      factory -> InventoryService
+        ...
+        factory <- threw here
+
+  InventoryService comes round twice, so this is a circular dependency. Leave builder.validateOnBuild
+  on and build() names it before anything is resolved.
+```
+
+`CosDIResolutionException` carries the same thing as data: `missingType`, `missingKey`, and `path`, an array of `{ type, site }` from the outermost class down to the gap. `resolutionTree(path, leaf)` draws it the way the message does. Failed resolves are also kept per scope and drawn in the **CosDI Diagnostics** panel, newest first, with repeats collapsed — a failure inside `update()` says `x240` rather than filling the console.
 
 ### Inject a component field
 

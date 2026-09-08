@@ -58,7 +58,7 @@ check('a name works as a key beside a token', () => {
 
 check('an unregistered key throws with its name in the message', () => {
     const container = new ContainerBuilder().build();
-    assert.throws(() => container.resolve('IPlayerService'), /No such registration of type: IPlayerService/);
+    assert.throws(() => container.resolve('IPlayerService'), /Nothing registers IPlayerService/);
 });
 
 check('a bare @inject finds the class the field name points at', () => {

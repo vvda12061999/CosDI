@@ -4,7 +4,7 @@ import { IInjectParameter } from '../IInjectParameter.ts';
 import { IObjectResolver, IScopedObjectResolver } from '../IObjectResolver.ts';
 import { Registration } from '../Registration.ts';
 import { Lifetime } from '../Lifetime.ts';
-import { CosDIException } from '../CosDIException.ts';
+import { CosDIException, traceResolution } from '../CosDIException.ts';
 import { TypeKey, typeKeyName } from '../Token.ts';
 import { ContainerLocal } from './ContainerLocal.ts';
 
@@ -30,10 +30,20 @@ export class ExistingInstanceProvider implements IInstanceProvider {
 }
 
 export class FuncInstanceProvider implements IInstanceProvider {
-    constructor(private readonly implementationProvider: (resolver: IObjectResolver) => object) {}
+    constructor(
+        private readonly implementationProvider: (resolver: IObjectResolver) => object,
+        private readonly implementationType: TypeKey | null = null,
+    ) {}
 
     spawnInstance(resolver: IObjectResolver): object {
-        return this.implementationProvider(resolver);
+        try {
+            return this.implementationProvider(resolver);
+        } catch (ex) {
+            if (this.implementationType) {
+                traceResolution(ex, this.implementationType, 'factory');
+            }
+            throw ex;
+        }
     }
 }
 

@@ -1,4 +1,5 @@
 import { DiagnosticsCollector } from './DiagnosticsCollector.ts';
+import type { DiagnosticsFailure } from './DiagnosticsCollector.ts';
 import { DiagnosticsInfo } from './DiagnosticsInfo.ts';
 import { Registration } from '../Runtime/Registration.ts';
 import { typeKeyName } from '../Runtime/Token.ts';
@@ -49,6 +50,8 @@ export interface DiagnosticsScopeSnapshot {
     registrations: DiagnosticsRegistrationSnapshot[];
     /** What the container was built with, before anything is resolved. */
     graph?: DiagnosticsGraphSnapshot;
+    /** Resolves that threw, newest first. */
+    failures?: DiagnosticsFailure[];
 }
 
 export interface DiagnosticsBenchmarkRow {
@@ -186,9 +189,14 @@ export class DiagnosticsContext {
         const scopes: DiagnosticsScopeSnapshot[] = [];
         const parentByName = new Map<string, string>();
         const graphByName = new Map<string, DiagnosticsGraphSnapshot | undefined>();
+        const failuresByName = new Map<string, DiagnosticsFailure[]>();
         collectors.forEach((collector) => {
             parentByName.set(collector.scopeName, collector.parentScopeName || '');
             graphByName.set(collector.scopeName, graphSnapshot(collector.dependencyGraph));
+            const failures = collector.getFailures();
+            if (failures.length > 0) {
+                failuresByName.set(collector.scopeName, failures);
+            }
         });
 
         this.getGroupedDiagnosticsInfos().forEach((infos, scopeName) => {
@@ -196,6 +204,7 @@ export class DiagnosticsContext {
                 scopeName,
                 parentScopeName: parentByName.get(scopeName) || '',
                 graph: graphByName.get(scopeName),
+                failures: failuresByName.get(scopeName),
                 registrations: infos.map((info) => ({
                     type: typeKeyName(info.registerInfo.registrationBuilder.implementationType),
                     lifetime: info.resolveInfo
@@ -218,6 +227,7 @@ export class DiagnosticsContext {
                     scopeName: collector.scopeName,
                     parentScopeName: collector.parentScopeName || '',
                     graph: graphByName.get(collector.scopeName),
+                    failures: failuresByName.get(collector.scopeName),
                     registrations: [],
                 });
             }

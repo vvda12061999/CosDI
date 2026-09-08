@@ -1,13 +1,13 @@
 import { DiagnosticsCollector } from '../Diagnostics/DiagnosticsCollector.ts';
 import { Registration } from './Registration.ts';
 import { IObjectResolver, IScopedObjectResolver } from './IObjectResolver.ts';
-import { ServiceKey, ServiceTypes, TypeKey, TypeKeyOf, typeKeyName } from './Token.ts';
+import { ServiceKey, ServiceTypes, TypeKey, TypeKeyOf } from './Token.ts';
 import { Lifetime } from './Lifetime.ts';
 import { Registry } from './Internal/Registry.ts';
 import { CompositeDisposable, Lazy } from './Internal/CompositeDisposable.ts';
 import { InjectorCache } from './Internal/InjectorCache.ts';
 import { ExistingInstanceProvider, COLLECTION_ANY_KEY, CollectionInstanceProvider } from './Internal/InstanceProviders.ts';
-import { CosDIException } from './CosDIException.ts';
+import { missingRegistration } from './Internal/ResolutionDiagnostics.ts';
 import { IContainerBuilder, ScopedContainerBuilder } from './ContainerBuilder.ts';
 import { isDisposable } from './IDisposable.ts';
 import { isRegistration } from './IObjectResolverExtensions.ts';
@@ -46,10 +46,9 @@ export class ScopedContainer implements IScopedObjectResolver {
         }
         const registration = this.tryFindRegistration(typeOrRegistration, key);
         if (!registration) {
-            throw new CosDIException(
-                typeOrRegistration,
-                `No such registration of type: ${typeKeyName(typeOrRegistration)}${key == null ? '' : ` with Key: ${key}`}`,
-            );
+            const failure = missingRegistration(this, typeOrRegistration, key);
+            this.diagnostics?.traceFailure(failure);
+            throw failure;
         }
         return this.resolveRegistration(registration);
     }
@@ -179,10 +178,9 @@ export class Container implements IObjectResolver {
         }
         const registration = this.tryGetRegistration(typeOrRegistration, key);
         if (!registration) {
-            throw new CosDIException(
-                typeOrRegistration,
-                `No such registration of type: ${typeKeyName(typeOrRegistration)}${key == null ? '' : ` with Key: ${key}`}`,
-            );
+            const failure = missingRegistration(this, typeOrRegistration, key);
+            this.diagnostics?.traceFailure(failure);
+            throw failure;
         }
         return this.resolveRegistration(registration);
     }

@@ -33,6 +33,9 @@ jobs:
       - name: Dependency graph tests
         run: node scripts/test-graph.js
 
+      - name: Error diagnostics tests
+        run: node scripts/test-errors.js
+
       - name: Token codegen tests
         run: node scripts/test-token-codegen.js
 
