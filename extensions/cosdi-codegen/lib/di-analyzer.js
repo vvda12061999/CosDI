@@ -866,7 +866,10 @@ function analyzeProject(config) {
 
 function formatProblem(problem, projectRoot) {
     const file = projectRoot ? path.relative(projectRoot, problem.file) : problem.file;
-    return `${file}:${problem.line}:${problem.column}  ${problem.severity}  ${problem.message} [${problem.rule}]`;
+    // Reported with forward slashes on every platform, the way an editor and
+    // the rest of the project's own paths are written.
+    return `${file.split(path.sep).join('/')}:${problem.line}:${problem.column}`
+        + `  ${problem.severity}  ${problem.message} [${problem.rule}]`;
 }
 
 module.exports = {
