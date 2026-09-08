@@ -33,6 +33,7 @@ If this saves you time in a Cocos project, please **[⭐ star the repo](https://
    - [Generator settings](#generator-settings)
    - [Register in a LifetimeScope](#register-in-a-lifetimescope)
    - [What build() checks](#what-build-checks)
+   - [The dependency graph](#the-dependency-graph)
    - [Inject a component field](#inject-a-component-field)
    - [`new Player()` fills constructor deps](#new-player-fills-constructor-deps)
 3. [Proof of concept](#3-proof-of-concept)
@@ -266,6 +267,45 @@ Circular dependency detected: PlayerService -> InventoryService (constructor par
 Constructor parameters, `@inject` fields and injected methods all count, since field injection happens while the instance is still being made. What the container does not construct ends the walk, so `registerFactory`, `registerInstance` and a value given with `withParameter` break a loop here exactly as they break one at runtime — which is also how you fix one, alongside taking `IObjectResolver` and resolving the other side at the moment you need it.
 
 Each registration is read once, so a graph where services share dependencies costs what it looks like it should: a 34-deep chain whose services each take the two below them is checked in under a millisecond. Validation adds about 2 µs to a twelve-service build, so leaving all of it on in a shipping build is fine.
+
+### The dependency graph
+
+What validation reads is kept, so you can read it too. `container.dependencyGraph` is the whole container as a graph: one node per registration, one edge per thing it asks for, and what answered.
+
+```ts
+import { dependencyGraphText } from 'cosdi';
+
+console.log(dependencyGraphText(container));
+```
+
+```
+GameEntryPoint [Singleton class]
+├─ field 'player' -> Player [Transient class]
+│  ├─ constructor parameter 'example' -> ExampleService [Singleton class, as IExampleService]
+│  └─ constructor parameter 'inventory' -> InventoryService [Singleton class, as IInventoryService]
+│     └─ constructor parameter 'example' -> ExampleService [Singleton class, as IExampleService]
+└─ field 'audio' -> IAudioService (nothing registers it)
+IObjectResolver [Transient container]
+```
+
+It is drawn from the roots — what nothing else asks for, which is usually your entry points — and a node with dependencies of its own is drawn once, then marked. A loop is marked `(cycle)` where it closes and listed underneath, so a container that `build()` refused can still be looked at: `builder.dependencyGraph()` answers before the build does.
+
+`dependencyGraphMermaid(container)` writes the same thing as a Mermaid flowchart, which GitHub and most Markdown viewers draw. Unmet edges come out dashed.
+
+Each node carries its `registration`, `lifetime`, `contracts`, `key`, `source` (`class`, `component`, `instance`, `factory`, `container`, `collection`), `edges` and `dependents`, so you can walk it yourself:
+
+```ts
+const graph = container.dependencyGraph;
+
+const player = graph.find(Player);
+player.edges.map((edge) => edge.site);          // where it asks
+graph.reachableFrom(player);                    // everything it pulls in
+graph.roots.filter((node) => node.lifetime === Lifetime.Singleton);
+```
+
+Every edge says what answered it: `local` here, `parent` in a scope above, `missing` when nothing registers it, `keyless` when nothing says what to inject. A scope's graph lists what its parents registered as nodes of its own, marked `from a parent scope`, so a child scope reads as what it can actually resolve.
+
+The **CosDI Diagnostics** panel draws the same graph under each scope while the game plays, next to the resolve counts. Keeping the graph costs a few hundred bytes per scope; `builder.keepDependencyGraph = false`, or `ContainerBuilder.keepGraphByDefault = false` for every builder, leaves `container.dependencyGraph` empty without changing what `build()` checks.
 
 ### Inject a component field
 
