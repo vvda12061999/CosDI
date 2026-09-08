@@ -38,35 +38,45 @@ Use **[New issue → Feature request](https://github.com/vvda12061999/CosDI/issu
 
 ```bash
 npm ci
-node scripts/check-versions.js
-node scripts/test-runtime.js
-node scripts/test-validation.js
-node scripts/test-circular.js
-node scripts/test-graph.js
-node scripts/test-errors.js
-node scripts/test-di-analyzer.js
-node scripts/test-validate-cli.js
-node scripts/test-diagnostics-install.js
-node scripts/test-codegen-install.js
+npm test
 node scripts/pack-extension.js
 ```
 
-6. After adding or removing a `@generateToken` interface, regenerate the tokens. They live in `node_modules/cosdi-tokens`, so nothing to commit. The same extension reads the project's DI, which CI runs over the sample.
+`npm test` runs every suite in `scripts/` and prints a line per suite; it takes
+about ten seconds. To run one while working on it, either name it or run the
+script itself:
 
 ```bash
-node scripts/generate-tokens.js
-node extensions/cosdi-codegen/bin/cosdi-codegen.js validate --project . --strict
+node scripts/test-all.js --list
+node scripts/test-all.js --filter errors
+node scripts/test-codegen-modes.js --mode keys
 ```
 
-7. When you touch `extensions/cosdi-codegen/lib/token-codegen.js`, run its tests.
+6. After adding or removing a `@generateToken` interface, regenerate the tokens. They live in `node_modules/cosdi-tokens`, so nothing to commit. The same extension reads the project's DI, which `npm test` runs over the sample.
 
 ```bash
-node scripts/test-token-codegen.js
+npm run tokens
+npm run validate
 ```
 
-8. Open a pull request against `master`. Say what you changed and how you tested it (Play, Diagnostics panel, or benchmark).
+7. Open a pull request against `master`. Say what you changed and how you tested it (Play, Diagnostics panel, or benchmark).
 
-CI runs those checks and packs `cosdi-diagnostics.zip` on every PR. Do not commit the zip; GitHub Actions builds it.
+CI runs every suite across a matrix and packs `cosdi-diagnostics.zip` on every PR. Do not commit the zip; GitHub Actions builds it.
+
+## What CI runs
+
+`npm test` is run on each of these, and the packing job waits for all of them:
+
+| Axis | Covered |
+| --- | --- |
+| Operating system | Linux, Windows, macOS |
+| Node | 18, 20, 22, 24, 26 on Linux; 20 and 24 on Windows; 24 on macOS |
+| TypeScript | 4.7, 4.9, 5.4 and the newest release, on top of the pinned one |
+
+Creator ships its own TypeScript, which is why the runtime and everything the
+generator writes is compiled against a range of them rather than the pinned
+version alone. A leg failing on its own tells you where a change is
+platform-specific or version-specific; nothing is cancelled when one goes red.
 
 ## Releasing
 
@@ -78,6 +88,8 @@ CI runs those checks and packs `cosdi-diagnostics.zip` on every PR. Do not commi
 - A resolve that fails builds its message on the way out: `Container.ts` says what is missing through `Internal/ResolutionDiagnostics.ts`, and every place that constructs or injects calls `traceResolution` to add where it asked. A new injection site needs that call and a case in `scripts/test-errors.js`. Foreign errors keep their own type and message; only their stack is added to.
 - The graph is also what `container.dependencyGraph`, `dependencyGraphText` and the Diagnostics panel read, so a new provider needs a `source` in `DependencyGraph.ts` and, if the panel should draw it, a field in the snapshot in `Diagnostics/DiagnosticsContext.ts`.
 - The same mistakes are read out of the sources before a build by `extensions/cosdi-codegen/lib/di-analyzer.js`, which the CLI, the save hook and the Creator build hook all call. A new rule needs a default severity there, a case in `scripts/test-di-analyzer.js`, and a row in both READMEs. It reads text, so a rule that would need types belongs in `build()` instead.
+- A new suite belongs in the `SUITES` list in `scripts/test-all.js`. That list is what `npm test` and every leg of the CI matrix run, so a suite left out of it runs nowhere.
+- What the generator writes is checked by compiling it: `scripts/test-codegen-modes.js` generates into a scratch project in each mode and reads the type errors TypeScript reports, so a mode that writes something unusable, or a token that comes back as `any`, fails there.
 - Field `@inject(Class)`, or a bare `@inject` when the field name matches what it wants. `@injectable(Class)` on plain classes. No `@` on constructor parameters (Creator can leave `@` in the emitted JS).
 - An interface is keyed by the token generated from its `/** @generateToken */` tag, imported from `cosdi-tokens`. Never hand-edit generated output, and never write a `// cosdi:token` line yourself.
 - Do not put `@injectable()` on `Component` subclasses.

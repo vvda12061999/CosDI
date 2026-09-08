@@ -6,47 +6,83 @@ on:
   pull_request:
     branches: [master]
 
+# A new push to a branch makes the run before it moot.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # Every suite, on the platforms and Node versions a Cocos Creator project is
+  # opened and built on. Linux covers the range, the others cover themselves.
+  test:
+    name: ${{ matrix.os }} / node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, node: 18 }
+          - { os: ubuntu-latest, node: 20 }
+          - { os: ubuntu-latest, node: 22 }
+          - { os: ubuntu-latest, node: 24 }
+          - { os: ubuntu-latest, node: 26 }
+          - { os: windows-latest, node: 20 }
+          - { os: windows-latest, node: 24 }
+          - { os: macos-latest, node: 24 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dev dependencies
+        run: npm ci
+
+      - name: Run every suite
+        run: npm test
+
+  # Creator brings its own TypeScript, so the runtime and everything generated
+  # for it has to compile on more than the one version pinned here.
+  typescript:
+    name: typescript ${{ matrix.typescript }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        typescript: ['4.7', '4.9', '5.4', 'latest']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dev dependencies
+        run: npm ci
+
+      - name: Use TypeScript ${{ matrix.typescript }}
+        run: npm install --no-save typescript@${{ matrix.typescript }}
+
+      - name: Run every suite
+        run: npm test
+
   pack:
+    name: pack
+    needs: [test, typescript]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: npm
 
       - name: Install dev dependencies
         run: npm ci
 
-      - name: Check versions are in sync
-        run: node scripts/check-versions.js
-
-      - name: Runtime tests
-        run: node scripts/test-runtime.js
-
-      - name: Registration validation tests
-        run: node scripts/test-validation.js
-
-      - name: Circular dependency tests
-        run: node scripts/test-circular.js
-
-      - name: Dependency graph tests
-        run: node scripts/test-graph.js
-
-      - name: Error diagnostics tests
-        run: node scripts/test-errors.js
-
-      - name: Token codegen tests
-        run: node scripts/test-token-codegen.js
-
-      - name: DI analyzer tests
-        run: node scripts/test-di-analyzer.js
-
-      - name: Validate CLI and build hook tests
-        run: node scripts/test-validate-cli.js
-
       - name: Generate interface tokens
-        run: node scripts/generate-tokens.js
+        run: npm run tokens
 
       - name: Pack cosdi
         working-directory: assets/CosDI
@@ -59,15 +95,6 @@ jobs:
       - name: Pack cosdi-codegen
         working-directory: extensions/cosdi-codegen
         run: npm pack --dry-run --ignore-scripts
-
-      - name: Install cosdi-diagnostics into a scratch project
-        run: node scripts/test-diagnostics-install.js
-
-      - name: Install cosdi-codegen into a scratch project
-        run: node scripts/test-codegen-install.js
-
-      - name: Validate this project's own dependency injection
-        run: node extensions/cosdi-codegen/bin/cosdi-codegen.js validate --project . --strict
 
       - name: Pack extension zip
         run: node scripts/pack-extension.js

@@ -517,6 +517,7 @@ Singleton lookup is ~23 ns. Combined / Complex stay in the same order of magnitu
 - Do not put `@` on constructor parameters.
 - Do not put `@injectable()` on `Component` subclasses. Use field `@inject`.
 - `CosDISettings.enableDiagnostics` defaults to `true` for the editor panel. Turn it off in shipping builds if you want zero tracer cost.
+- Every release is tested on Linux, Windows and macOS, on Node 18 through 26, and compiled against TypeScript 4.7 through the newest release. Creator brings its own TypeScript, so the runtime and everything the generator writes has to hold across that range.
 
 ---
 
@@ -526,7 +527,7 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)**.
 
 1. Fork and branch from `master`.
 2. Edit `assets/CosDI/` (the `cosdi` runtime) or `extensions/cosdi-diagnostics/` (the `cosdi-diagnostics` editor panel).
-3. Run `node scripts/test-diagnostics-install.js` after touching the install CLI, and `node scripts/pack-extension.js` to rebuild the release zip.
+3. Run `npm test` for every suite, and `node scripts/pack-extension.js` to rebuild the release zip.
 4. Open a pull request. Describe the change and how you tested it.
 
 ---
