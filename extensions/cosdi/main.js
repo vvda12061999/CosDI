@@ -257,13 +257,13 @@ function isInsideRoots(file, config) {
 }
 
 /**
- * A save only revisits the file that was saved. In `file` mode one saved file
- * can add or drop an entry, so the module is rebuilt, but only when that file
- * carries a tag now or contributed one last time.
+ * A save only revisits the file that was saved. When tokens are collected into
+ * one module, a saved file can add or drop an entry, so the module is rebuilt,
+ * but only when that file carries a tag now or contributed one last time.
  */
 function regenerateForSave(file) {
     const config = loadConfig(Editor.Project.path);
-    if (config.mode !== 'file') {
+    if (config.mode === 'inline') {
         generateProjectTokens(true, [file]);
         return;
     }

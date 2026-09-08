@@ -281,6 +281,43 @@ check('file mode removes the module when the last tag goes', () => {
     assert.strictEqual(fs.existsSync(out), false);
 });
 
+check('package mode generates outside assets', () => {
+    const source = tagged('IA');
+    const root = project({ 'assets/Scripts/A.ts': source }, { mode: 'package', packageName: 'game-tokens' });
+    const config = loadConfig(root);
+    assert.strictEqual(config.out, path.join(root, 'node_modules', 'game-tokens'));
+
+    generateTokens(config);
+    assert.strictEqual(fs.readFileSync(path.join(root, 'assets/Scripts/A.ts'), 'utf8'), source, 'sources untouched');
+
+    const index = fs.readFileSync(path.join(root, 'node_modules/game-tokens/index.ts'), 'utf8');
+    assert.ok(index.indexOf("import type { IA as IA_ } from '../../assets/Scripts/A';") > 0, index);
+    assert.ok(index.indexOf("export const IA = createToken<IA_>('IA');") > 0, index);
+
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, 'node_modules/game-tokens/package.json'), 'utf8'));
+    assert.strictEqual(manifest.name, 'game-tokens');
+    assert.strictEqual(manifest.main, './index.ts');
+    assert.strictEqual(generateTokens(loadConfig(root)).changed.length, 0, 'second run is a no-op');
+});
+
+check('package mode cleans up when the last tag goes', () => {
+    const root = project({ 'assets/Scripts/A.ts': tagged('IA') }, { mode: 'package' });
+    generateTokens(loadConfig(root));
+    const index = path.join(root, 'node_modules/cosdi-tokens/index.ts');
+    assert.ok(fs.existsSync(index));
+
+    fs.writeFileSync(path.join(root, 'assets/Scripts/A.ts'), tagged('IA').replace('/** @createToken */\n', ''), 'utf8');
+    generateTokens(loadConfig(root));
+    assert.strictEqual(fs.existsSync(index), false);
+    assert.strictEqual(fs.existsSync(path.join(root, 'node_modules/cosdi-tokens/package.json')), false);
+});
+
+check('file mode warns when the module lands outside assets', () => {
+    const root = project({ 'assets/Scripts/A.ts': tagged('IA') }, { mode: 'file', out: 'generated/Tokens.ts' });
+    const result = generateTokens(loadConfig(root));
+    assert.ok(/only compiles scripts under assets/.test(result.warnings.join('\n')), result.warnings.join('\n'));
+});
+
 check('check mode writes nothing', () => {
     const source = tagged('IA');
     const root = project({ 'assets/Scripts/A.ts': source });
