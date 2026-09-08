@@ -318,6 +318,94 @@ check('file mode warns when the module lands outside assets', () => {
     assert.ok(/only compiles scripts under assets/.test(result.warnings.join('\n')), result.warnings.join('\n'));
 });
 
+const plain = (name) => ['export interface ' + name + ' {', '    a: number;', '}', ''].join('\n');
+
+check('keys mode maps tagged interfaces and leaves the source alone', () => {
+    const source = tagged('IA');
+    const root = project({ 'assets/Scripts/A.ts': source }, { mode: 'keys' });
+    const result = generateTokens(loadConfig(root));
+    assert.strictEqual(result.tokens, 1);
+    assert.strictEqual(fs.readFileSync(path.join(root, 'assets/Scripts/A.ts'), 'utf8'), source, 'source untouched');
+
+    const declaration = fs.readFileSync(path.join(root, 'cosdi-service-keys.d.ts'), 'utf8');
+    assert.ok(/declare module 'cosdi'/.test(declaration), declaration);
+    assert.ok(/interface ServiceTypes/.test(declaration), declaration);
+    assert.ok(/'IA': IA_;/.test(declaration), declaration);
+    assert.ok(/import type \{ IA as IA_ \} from '\.\/assets\/Scripts\/A';/.test(declaration), declaration);
+    assert.strictEqual(generateTokens(loadConfig(root)).changed.length, 0, 'second run is a no-op');
+});
+
+check('keys mode with include exported needs no tag at all', () => {
+    const root = project({ 'assets/Scripts/A.ts': plain('IA') }, { mode: 'keys', include: 'exported' });
+    const result = generateTokens(loadConfig(root));
+    assert.strictEqual(result.tokens, 1);
+    assert.ok(/'IA': IA_;/.test(fs.readFileSync(path.join(root, 'cosdi-service-keys.d.ts'), 'utf8')));
+});
+
+check('keys mode skips interfaces that are not exported or are generic', () => {
+    const root = project({
+        'assets/Scripts/A.ts': [
+            'interface IPrivate { a: number; }',
+            'export interface IGeneric<T> { a: T; }',
+            'export interface IPlain { a: number; }',
+            '',
+        ].join('\n'),
+    }, { mode: 'keys', include: 'exported' });
+    const result = generateTokens(loadConfig(root));
+    assert.strictEqual(result.tokens, 1);
+    const declaration = fs.readFileSync(path.join(root, 'cosdi-service-keys.d.ts'), 'utf8');
+    assert.ok(/'IPlain'/.test(declaration), declaration);
+    assert.strictEqual(/IPrivate|IGeneric/.test(declaration), false, declaration);
+});
+
+check('keys mode honours a custom key name from the tag', () => {
+    const root = project({
+        'assets/Scripts/A.ts': tagged('IA').replace('@createToken', "@createToken('Game.IA')"),
+    }, { mode: 'keys' });
+    generateTokens(loadConfig(root));
+    const declaration = fs.readFileSync(path.join(root, 'cosdi-service-keys.d.ts'), 'utf8');
+    assert.ok(/'Game\.IA': IA_;/.test(declaration), declaration);
+});
+
+check('keys mode reports a name claimed by two files', () => {
+    const root = project({
+        'assets/Scripts/A.ts': plain('IA'),
+        'assets/Scripts/B.ts': plain('IA'),
+    }, { mode: 'keys', include: 'exported' });
+    const result = generateTokens(loadConfig(root));
+    assert.strictEqual(result.tokens, 1);
+    assert.ok(/already mapped from/.test(result.warnings.join('\n')), result.warnings.join('\n'));
+});
+
+check('keys mode clears inline tokens left from the other mode', () => {
+    const root = project({ 'assets/Scripts/A.ts': tagged('IA') });
+    generateTokens(loadConfig(root));
+    assert.ok(fs.readFileSync(path.join(root, 'assets/Scripts/A.ts'), 'utf8').indexOf('cosdi:token') > 0);
+
+    fs.writeFileSync(path.join(root, 'cosdi.codegen.json'), JSON.stringify({ mode: 'keys' }), 'utf8');
+    generateTokens(loadConfig(root));
+    assert.strictEqual(fs.readFileSync(path.join(root, 'assets/Scripts/A.ts'), 'utf8').indexOf('cosdi:token'), -1);
+    assert.ok(fs.existsSync(path.join(root, 'cosdi-service-keys.d.ts')));
+});
+
+check('keys mode removes the declaration when the last interface goes', () => {
+    const root = project({ 'assets/Scripts/A.ts': plain('IA') }, { mode: 'keys', include: 'exported' });
+    generateTokens(loadConfig(root));
+    const out = path.join(root, 'cosdi-service-keys.d.ts');
+    assert.ok(fs.existsSync(out));
+
+    fs.writeFileSync(path.join(root, 'assets/Scripts/A.ts'), 'export const nothing = 1;\n', 'utf8');
+    generateTokens(loadConfig(root));
+    assert.strictEqual(fs.existsSync(out), false);
+});
+
+check('keys mode writes nothing under check', () => {
+    const root = project({ 'assets/Scripts/A.ts': plain('IA') }, { mode: 'keys', include: 'exported' });
+    const result = generateTokens(Object.assign({}, loadConfig(root), { check: true }));
+    assert.strictEqual(result.changed.length, 1);
+    assert.strictEqual(fs.existsSync(path.join(root, 'cosdi-service-keys.d.ts')), false);
+});
+
 check('check mode writes nothing', () => {
     const source = tagged('IA');
     const root = project({ 'assets/Scripts/A.ts': source });

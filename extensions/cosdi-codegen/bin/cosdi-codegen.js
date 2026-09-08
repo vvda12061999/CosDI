@@ -19,6 +19,8 @@ if (config.error) {
 
 const result = generateTokens(Object.assign({}, config, { check }));
 
+const unit = config.mode === 'keys' ? 'service key(s)' : 'token(s)';
+
 for (const warning of result.warnings) {
     console.warn('[CosDI] ' + warning);
 }
@@ -32,4 +34,4 @@ if (check && result.changed.length) {
     process.exit(1);
 }
 
-console.log('[CosDI] ' + result.tokens + ' token(s) in ' + result.scanned + ' file(s)');
+console.log('[CosDI] ' + result.tokens + ' ' + unit + ' in ' + result.scanned + ' file(s)');

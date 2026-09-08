@@ -32,11 +32,12 @@ function generateProjectTokens(quiet, files) {
     if (!files) {
         tokenSources = result.sources;
     }
+    const noun = config.mode === 'keys' ? 'service key' : 'interface token';
     if (result.changed.length) {
-        console.log('[CosDI] Wrote interface tokens in ' + result.changed.length + ' file(s)');
+        console.log('[CosDI] Wrote ' + noun + 's in ' + result.changed.length + ' file(s)');
         reimport(result.changed);
     } else if (!quiet) {
-        console.log('[CosDI] Interface tokens are up to date (' + result.tokens + ' token' + (result.tokens === 1 ? '' : 's') + ')');
+        console.log('[CosDI] ' + result.tokens + ' ' + noun + (result.tokens === 1 ? '' : 's') + ' up to date');
     }
     return result;
 }
@@ -77,13 +78,15 @@ function regenerateForSave(file) {
         generateProjectTokens(true, [file]);
         return;
     }
-    let tagged = false;
+    let contributes = false;
     try {
-        tagged = fs.readFileSync(file, 'utf8').indexOf('@createToken') >= 0;
+        const source = fs.readFileSync(file, 'utf8');
+        contributes = source.indexOf('@createToken') >= 0
+            || (config.mode === 'keys' && config.include === 'exported' && /\bexport\s+interface\b/.test(source));
     } catch (_error) {
-        tagged = false;
+        contributes = false;
     }
-    if (tagged || tokenSources.indexOf(file) >= 0) {
+    if (contributes || tokenSources.indexOf(file) >= 0) {
         generateProjectTokens(true);
     }
 }
