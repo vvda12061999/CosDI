@@ -11,8 +11,9 @@ if (!next || !/^\d+\.\d+\.\d+$/.test(next)) {
 }
 
 const files = [
-    path.join('extensions', 'cosdi', 'package.json'),
+    'package.json',
     path.join('assets', 'CosDI', 'package.json'),
+    path.join('extensions', 'cosdi-diagnostics', 'package.json'),
 ];
 
 for (const file of files) {
@@ -23,7 +24,7 @@ for (const file of files) {
 }
 
 console.log('Next:');
-console.log('  git add extensions/cosdi/package.json assets/CosDI/package.json');
+console.log('  git add ' + files.join(' '));
 console.log('  git commit -m "Release v' + next + '"');
 console.log('  git tag v' + next);
 console.log('  git push origin master --tags');

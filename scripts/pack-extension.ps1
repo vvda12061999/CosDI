@@ -1,4 +1,4 @@
-# Refresh the extension runtime from assets/CosDI and build cosdi.zip
+# Build cosdi-diagnostics.zip from extensions/cosdi-diagnostics
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
