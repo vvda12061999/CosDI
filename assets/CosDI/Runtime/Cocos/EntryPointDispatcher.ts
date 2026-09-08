@@ -18,7 +18,7 @@ export class EntryPointDispatcher implements IDisposable {
     dispatch(): void {
         const origin = this.container.applicationOrigin as { node?: Node } | null;
         const node = origin?.node;
-        const exceptionHandler = this.container.tryResolve(EntryPointExceptionHandler) as EntryPointExceptionHandler | null;
+        const exceptionHandler = this.container.tryResolve(EntryPointExceptionHandler);
 
         const run = <T>(items: T[], invoke: (item: T) => void) => {
             for (let i = 0; i < items.length; i++) {
@@ -34,13 +34,13 @@ export class EntryPointDispatcher implements IDisposable {
             }
         };
 
-        const initializables = this.container.resolveAll(IInitializable, true) as IInitializable[];
+        const initializables = this.container.resolveAll(IInitializable, true);
         run(initializables, (item) => item.initialize());
 
-        const postInitializables = this.container.resolveAll(IPostInitializable, true) as IPostInitializable[];
+        const postInitializables = this.container.resolveAll(IPostInitializable, true);
         run(postInitializables, (item) => item.postInitialize());
 
-        const asyncStartables = this.container.resolveAll(IAsyncStartable, true) as IAsyncStartable[];
+        const asyncStartables = this.container.resolveAll(IAsyncStartable, true);
         run(asyncStartables, (item) => {
             const result = item.startAsync();
             if (result && typeof (result as Promise<void>).catch === 'function') {
@@ -55,9 +55,9 @@ export class EntryPointDispatcher implements IDisposable {
         });
 
         if (!node) {
-            const startables = this.container.resolveAll(IStartable, true) as IStartable[];
+            const startables = this.container.resolveAll(IStartable, true);
             run(startables, (item) => item.start());
-            const postStartables = this.container.resolveAll(IPostStartable, true) as IPostStartable[];
+            const postStartables = this.container.resolveAll(IPostStartable, true);
             run(postStartables, (item) => item.postStart());
             return;
         }
@@ -67,11 +67,11 @@ export class EntryPointDispatcher implements IDisposable {
             runner = node.addComponent(EntryPointRunner);
         }
         runner.exceptionHandler = exceptionHandler;
-        runner.startables = this.container.resolveAll(IStartable, true) as IStartable[];
-        runner.postStartables = this.container.resolveAll(IPostStartable, true) as IPostStartable[];
-        runner.tickables = this.container.resolveAll(ITickable, true) as ITickable[];
-        runner.postTickables = this.container.resolveAll(IPostTickable, true) as IPostTickable[];
-        runner.lateTickables = this.container.resolveAll(ILateTickable, true) as ILateTickable[];
+        runner.startables = this.container.resolveAll(IStartable, true);
+        runner.postStartables = this.container.resolveAll(IPostStartable, true);
+        runner.tickables = this.container.resolveAll(ITickable, true);
+        runner.postTickables = this.container.resolveAll(IPostTickable, true);
+        runner.lateTickables = this.container.resolveAll(ILateTickable, true);
         this.runner = runner;
     }
 

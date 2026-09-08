@@ -1,6 +1,9 @@
 export class Token<T = unknown> {
     readonly name: string;
 
+    /** Carries the service type through the API. Never assigned at runtime. */
+    declare readonly type: T;
+
     constructor(name: string) {
         this.name = name;
         registerNamedTypeKey(name, this);
@@ -12,6 +15,11 @@ export class Token<T = unknown> {
 }
 
 export type TypeKey = Function | Token;
+
+export type Constructor<T = unknown> = abstract new (...args: any[]) => T;
+
+/** A runtime key that resolves to `T`: either an interface token or a class. */
+export type TypeKeyOf<T> = Token<T> | Constructor<T>;
 
 const namedTypeKeys = new Map<string, TypeKey>();
 
@@ -28,6 +36,23 @@ export function getNamedTypeKey(name: string | undefined): TypeKey | undefined {
     return namedTypeKeys.get(name);
 }
 
+/**
+ * Creates the runtime key for a type Cocos erases at compile time.
+ *
+ * For an interface, declare the token next to it under the same name. The
+ * interface stays a type, the token becomes its value, and `IExampleService`
+ * then works in both positions:
+ *
+ * ```ts
+ * export interface IExampleService {
+ *     name: string;
+ * }
+ * export const IExampleService = createToken<IExampleService>('IExampleService');
+ * ```
+ *
+ * Passing a class instead registers that class as its own key, which is only
+ * needed when the class name has to survive minification.
+ */
 export function createToken<T>(name: string): Token<T>;
 export function createToken<T extends Function>(target: T): T;
 export function createToken(): ClassDecorator;

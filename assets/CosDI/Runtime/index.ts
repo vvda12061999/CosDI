@@ -1,7 +1,7 @@
 export { CosDIException, CosDIParentTypeReferenceNotFound } from './CosDIException.ts';
 export { Lifetime } from './Lifetime.ts';
 export { Token, createToken, typeKeyName, isToken } from './Token.ts';
-export type { TypeKey } from './Token.ts';
+export type { TypeKey, TypeKeyOf } from './Token.ts';
 export { isDisposable } from './IDisposable.ts';
 export type { IDisposable } from './IDisposable.ts';
 export type { IInjector } from './IInjector.ts';

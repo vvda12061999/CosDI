@@ -1,7 +1,7 @@
 import { DiagnosticsCollector } from '../Diagnostics/DiagnosticsCollector.ts';
 import { Registration } from './Registration.ts';
 import { IObjectResolver, IScopedObjectResolver } from './IObjectResolver.ts';
-import { TypeKey, typeKeyName } from './Token.ts';
+import { TypeKey, TypeKeyOf, typeKeyName } from './Token.ts';
 import { Lifetime } from './Lifetime.ts';
 import { Registry } from './Internal/Registry.ts';
 import { CompositeDisposable, Lazy } from './Internal/CompositeDisposable.ts';
@@ -34,7 +34,10 @@ export class ScopedContainer implements IScopedObjectResolver {
         this.applicationOrigin = applicationOrigin;
     }
 
-    resolve(typeOrRegistration: TypeKey | Registration, key?: object): object {
+    resolve<T>(type: TypeKeyOf<T>, key?: object): T;
+    resolve(type: TypeKey, key?: object): object;
+    resolve(registration: Registration): object;
+    resolve(typeOrRegistration: TypeKey | Registration, key?: object): any {
         if (isRegistration(typeOrRegistration)) {
             return this.resolveRegistration(typeOrRegistration);
         }
@@ -48,7 +51,9 @@ export class ScopedContainer implements IScopedObjectResolver {
         return this.resolveRegistration(registration);
     }
 
-    tryResolve(type: TypeKey, key?: object): object | null {
+    tryResolve<T>(type: TypeKeyOf<T>, key?: object): T | null;
+    tryResolve(type: TypeKey, key?: object): object | null;
+    tryResolve(type: TypeKey, key?: object): any {
         const registration = this.tryFindRegistration(type, key);
         if (!registration) {
             return null;
@@ -56,7 +61,9 @@ export class ScopedContainer implements IScopedObjectResolver {
         return this.resolveRegistration(registration);
     }
 
-    resolveAll(type: TypeKey, localOnly = false): object[] {
+    resolveAll<T>(type: TypeKeyOf<T>, localOnly?: boolean): T[];
+    resolveAll(type: TypeKey, localOnly?: boolean): object[];
+    resolveAll(type: TypeKey, localOnly = false): any[] {
         const collection = this.tryFindRegistration(type, COLLECTION_ANY_KEY) ?? this.registry.tryGet(type, COLLECTION_ANY_KEY);
         if (!collection) {
             const single = this.tryFindRegistration(type);
@@ -156,7 +163,10 @@ export class Container implements IObjectResolver {
         this.applicationOrigin = applicationOrigin;
     }
 
-    resolve(typeOrRegistration: TypeKey | Registration, key?: object): object {
+    resolve<T>(type: TypeKeyOf<T>, key?: object): T;
+    resolve(type: TypeKey, key?: object): object;
+    resolve(registration: Registration): object;
+    resolve(typeOrRegistration: TypeKey | Registration, key?: object): any {
         if (isRegistration(typeOrRegistration)) {
             return this.resolveRegistration(typeOrRegistration);
         }
@@ -170,7 +180,9 @@ export class Container implements IObjectResolver {
         return this.resolveRegistration(registration);
     }
 
-    tryResolve(type: TypeKey, key?: object): object | null {
+    tryResolve<T>(type: TypeKeyOf<T>, key?: object): T | null;
+    tryResolve(type: TypeKey, key?: object): object | null;
+    tryResolve(type: TypeKey, key?: object): any {
         const registration = this.tryGetRegistration(type, key);
         if (!registration) {
             return null;
@@ -178,7 +190,9 @@ export class Container implements IObjectResolver {
         return this.resolveRegistration(registration);
     }
 
-    resolveAll(type: TypeKey, localOnly = false): object[] {
+    resolveAll<T>(type: TypeKeyOf<T>, localOnly?: boolean): T[];
+    resolveAll(type: TypeKey, localOnly?: boolean): object[];
+    resolveAll(type: TypeKey, localOnly = false): any[] {
         const collection = this.registry.tryGet(type, COLLECTION_ANY_KEY);
         if (!collection) {
             const single = this.tryGetRegistration(type);
