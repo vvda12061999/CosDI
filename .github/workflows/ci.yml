@@ -14,13 +14,28 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      - name: Check versions are in sync
+        run: node scripts/check-versions.js
+
+      - name: Pack cosdi
+        working-directory: assets/CosDI
+        run: npm pack --dry-run
+
+      - name: Pack cosdi-diagnostics
+        working-directory: extensions/cosdi-diagnostics
+        run: npm pack --dry-run --ignore-scripts
+
+      - name: Install cosdi-diagnostics into a scratch project
+        run: node scripts/test-diagnostics-install.js
+
       - name: Pack extension zip
         run: node scripts/pack-extension.js
       - name: Check zip
         run: |
-          test -f cosdi.zip
-          unzip -l cosdi.zip | grep -q package.json
+          test -f cosdi-diagnostics.zip
+          unzip -l cosdi-diagnostics.zip | grep -q package.json
       - uses: actions/upload-artifact@v4
         with:
-          name: cosdi.zip
-          path: cosdi.zip
+          name: cosdi-diagnostics.zip
+          path: cosdi-diagnostics.zip
