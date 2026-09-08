@@ -28,5 +28,8 @@
     "di",
     "dependency-injection",
     "vcontainer"
-  ]
+  ],
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
 }

@@ -9,11 +9,14 @@ import { TypeKey, registerNamedTypeKey } from './Token.ts';
 import { ContainerInstanceProvider } from './Internal/InstanceProviders.ts';
 import { Lifetime } from './Lifetime.ts';
 import { checkCircularDependency } from './Internal/CircularDependency.ts';
+import { validateRegistrations } from './Internal/Validation.ts';
+import { CosDIValidationException } from './CosDIException.ts';
 import { FuncRegistrationBuilder, InstanceRegistrationBuilder } from './Internal/RegistrationBuilders.ts';
 
 export interface IContainerBuilder {
     applicationOrigin: object | null;
     diagnostics: DiagnosticsCollector | null;
+    validateOnBuild: boolean;
     readonly count: number;
     get(index: number): RegistrationBuilder;
     set(index: number, value: RegistrationBuilder): void;
@@ -27,7 +30,17 @@ export interface IContainerBuilder {
 }
 
 export class ContainerBuilder implements IContainerBuilder {
+    /**
+     * What every new builder starts with. Validation reads the registrations
+     * before anything is resolved and reports what would fail, which costs a
+     * pass over them at build time.
+     */
+    static validateByDefault = true;
+
     applicationOrigin: object | null = null;
+
+    /** Set to false to build registrations validation would refuse. */
+    validateOnBuild: boolean = ContainerBuilder.validateByDefault;
     private _diagnostics: DiagnosticsCollector | null = null;
     private readonly registrationBuilders: RegistrationBuilder[] = [];
     private buildCallback: ((container: IObjectResolver) => void) | null = null;
@@ -136,7 +149,18 @@ export class ContainerBuilder implements IContainerBuilder {
 
         const registry = Registry.build(registrations);
         checkCircularDependency(registrations, registry);
+        if (this.validateOnBuild) {
+            const problems = validateRegistrations(registrations, registry, this.parentResolver);
+            if (problems.length > 0) {
+                throw new CosDIValidationException(problems);
+            }
+        }
         return registry;
+    }
+
+    /** The scopes a dependency can also come from. A root build has none. */
+    protected get parentResolver(): IScopedObjectResolver | null {
+        return null;
     }
 
     protected emitCallbacks(container: IObjectResolver): void {
@@ -151,6 +175,10 @@ export class ScopedContainerBuilder extends ContainerBuilder {
         private readonly parent: IScopedObjectResolver,
     ) {
         super();
+    }
+
+    protected get parentResolver(): IScopedObjectResolver | null {
+        return this.parent;
     }
 
     buildScope(): IScopedObjectResolver {

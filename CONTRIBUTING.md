@@ -34,10 +34,13 @@ Use **[New issue → Feature request](https://github.com/vvda12061999/CosDI/issu
 2. Open the project in Cocos Creator 3.8.8.
 3. Change `assets/CosDI/` (runtime), `extensions/cosdi-diagnostics/` (Diagnostics panel) or `extensions/cosdi-codegen/` (interface token generator).
 4. Keep the sample in `assets/Scripts/` working (`import { ... } from 'cosdi'`).
-5. After touching the extension or its install CLI:
+5. After touching the runtime, an extension, or an install CLI:
 
 ```bash
+npm ci
 node scripts/check-versions.js
+node scripts/test-runtime.js
+node scripts/test-validation.js
 node scripts/test-diagnostics-install.js
 node scripts/test-codegen-install.js
 node scripts/pack-extension.js
@@ -65,6 +68,7 @@ CI runs those checks and packs `cosdi-diagnostics.zip` on every PR. Do not commi
 
 ## Code notes
 
+- `build()` validates the registrations and reports every problem at once. Anything new that the container constructs or injects belongs in `Internal/Validation.ts` too, with a case in `scripts/test-validation.js`.
 - Field `@inject(Class)`, or a bare `@inject` when the field name matches what it wants. `@injectable(Class)` on plain classes. No `@` on constructor parameters (Creator can leave `@` in the emitted JS).
 - An interface is keyed by the token generated from its `/** @generateToken */` tag, imported from `cosdi-tokens`. Never hand-edit generated output, and never write a `// cosdi:token` line yourself.
 - Do not put `@injectable()` on `Component` subclasses.

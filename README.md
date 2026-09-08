@@ -28,8 +28,11 @@ If this saves you time in a Cocos project, please **[⭐ star the repo](https://
 1. [Installation](#1-installation)
 2. [Quick start](#2-quick-start)
    - [Service](#service)
-   - [Interface token](#interface-token)
+   - [Interface as a service](#interface-as-a-service)
+   - [Inject without naming the key](#inject-without-naming-the-key)
+   - [Generator settings](#generator-settings)
    - [Register in a LifetimeScope](#register-in-a-lifetimescope)
+   - [What build() checks](#what-build-checks)
    - [Inject a component field](#inject-a-component-field)
    - [`new Player()` fills constructor deps](#new-player-fills-constructor-deps)
 3. [Proof of concept](#3-proof-of-concept)
@@ -225,6 +228,31 @@ export class GameLifetimeScope extends LifetimeScope {
 ```
 
 Add `GameLifetimeScope` to a node in the scene. `register` is a singleton unless you pass `Lifetime.Scoped` or `Lifetime.Transient`.
+
+### What build() checks
+
+`build()` reads the registrations before anything is resolved and refuses the ones that cannot work, so a mistake surfaces where you wrote it instead of at the first resolve, halfway into a scene:
+
+```
+CosDIValidationException: Container validation found 2 problems:
+  1. PlayerPresenter asks for IPlayerService (constructor parameter 'service'), which nothing registers.
+  2. IInventoryService is registered as something to construct, but it is a key, not a class.
+     Register the class and name it with .as(IInventoryService), or hand over an instance with
+     registerInstance / registerFactory.
+  Set builder.validateOnBuild = false to build anyway, as a dependency that only a child scope registers needs.
+```
+
+Every problem is reported by the same build, not one per run. It looks at what the container itself creates — `registerInstance` and `registerFactory` hand over a finished object, so those are left alone — and it checks three things:
+
+| Reported | Meaning |
+| --- | --- |
+| asks for X, which nothing registers | A constructor parameter, field or injected method wants something no scope has |
+| has no key for `...` | Nothing tells the container what to inject there: no token, and no registration goes by that name |
+| registered as something to construct, but it is a key | `register(IPlayerService)` where `register(PlayerService).as(IPlayerService)` was meant |
+
+A dependency is looked for in this container and in the scopes above it, which is where the container looks at resolve time. It cannot see a scope built later, so a service that only a child scope registers reads as missing — that is the case for `builder.validateOnBuild = false`, or `ContainerBuilder.validateByDefault = false` for every builder. A cycle is reported as a cycle, whether or not validation is on. `validateRegistrations(registrations, registry)` gives the same list without building, and `CosDIValidationException.problems` carries it.
+
+Reading the registrations costs about 2% of build time, so leaving it on in a shipping build is fine.
 
 ### Inject a component field
 

@@ -1,5 +1,5 @@
 import { Component, Node, Prefab, instantiate, Constructor, director, game } from 'cc';
-import { IInstanceProvider } from '../IInstanceProvider.ts';
+import { IInstanceProvider, ProviderInjection } from '../IInstanceProvider.ts';
 import { IInjector } from '../IInjector.ts';
 import { IInjectParameter } from '../IInjectParameter.ts';
 import { IObjectResolver } from '../IObjectResolver.ts';
@@ -35,10 +35,12 @@ export function applyPersistIfNeeded(destination: ComponentDestination, node: No
 }
 
 export class ExistingComponentProvider implements IInstanceProvider {
+    readonly injection: ProviderInjection = 'fields';
+
     constructor(
         private readonly instance: Component,
         private readonly injector: IInjector,
-        private readonly parameters: readonly IInjectParameter[] | null,
+        readonly parameters: readonly IInjectParameter[] | null,
         private readonly persistRoot: boolean,
     ) {}
 
@@ -52,9 +54,11 @@ export class ExistingComponentProvider implements IInstanceProvider {
 }
 
 export class FindComponentProvider implements IInstanceProvider {
+    readonly injection: ProviderInjection = 'fields';
+
     constructor(
         private readonly implementationType: Constructor<Component>,
-        private readonly parameters: readonly IInjectParameter[] | null,
+        readonly parameters: readonly IInjectParameter[] | null,
         private readonly root: Node | null,
         private readonly destination: ComponentDestination,
     ) {}
@@ -78,10 +82,12 @@ export class FindComponentProvider implements IInstanceProvider {
 }
 
 export class NewNodeProvider implements IInstanceProvider {
+    readonly injection: ProviderInjection = 'fields';
+
     constructor(
         private readonly implementationType: Constructor<Component>,
         private readonly injector: IInjector,
-        private readonly parameters: readonly IInjectParameter[] | null,
+        readonly parameters: readonly IInjectParameter[] | null,
         private readonly destination: ComponentDestination,
         private readonly nodeName: string | null,
     ) {}
@@ -103,11 +109,13 @@ export class NewNodeProvider implements IInstanceProvider {
 }
 
 export class PrefabComponentProvider implements IInstanceProvider {
+    readonly injection: ProviderInjection = 'fields';
+
     constructor(
         private readonly prefabFinder: (resolver: IObjectResolver) => Component | Prefab | Node,
         private readonly implementationType: Constructor<Component>,
         private readonly injector: IInjector,
-        private readonly parameters: readonly IInjectParameter[] | null,
+        readonly parameters: readonly IInjectParameter[] | null,
         private readonly destination: ComponentDestination,
     ) {}
 

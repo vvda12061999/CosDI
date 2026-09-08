@@ -1,4 +1,4 @@
-import { IInstanceProvider } from '../IInstanceProvider.ts';
+import { IInstanceProvider, ProviderInjection } from '../IInstanceProvider.ts';
 import { IInjector } from '../IInjector.ts';
 import { IInjectParameter } from '../IInjectParameter.ts';
 import { IObjectResolver, IScopedObjectResolver } from '../IObjectResolver.ts';
@@ -9,13 +9,15 @@ import { TypeKey, typeKeyName } from '../Token.ts';
 import { ContainerLocal } from './ContainerLocal.ts';
 
 export class InstanceProvider implements IInstanceProvider {
+    readonly injection: ProviderInjection = 'constructor';
+
     constructor(
         private readonly injector: IInjector,
-        private readonly customParameters: readonly IInjectParameter[] | null = null,
+        readonly parameters: readonly IInjectParameter[] | null = null,
     ) {}
 
     spawnInstance(resolver: IObjectResolver): object {
-        return this.injector.createInstance(resolver, this.customParameters);
+        return this.injector.createInstance(resolver, this.parameters);
     }
 }
 

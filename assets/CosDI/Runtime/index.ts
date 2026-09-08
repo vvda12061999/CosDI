@@ -1,4 +1,4 @@
-export { CosDIException, CosDIParentTypeReferenceNotFound } from './CosDIException.ts';
+export { CosDIException, CosDIParentTypeReferenceNotFound, CosDIValidationException } from './CosDIException.ts';
 export { Lifetime } from './Lifetime.ts';
 export { Token, createToken, typeKeyName, isToken, isServiceKey } from './Token.ts';
 export type { TypeKey, TypeKeyOf, ServiceKey, ServiceKeyHint } from './Token.ts';
@@ -25,9 +25,11 @@ export interface ServiceTypes {
 export { isDisposable } from './IDisposable.ts';
 export type { IDisposable } from './IDisposable.ts';
 export type { IInjector } from './IInjector.ts';
-export type { IInstanceProvider } from './IInstanceProvider.ts';
+export type { IInstanceProvider, ProviderInjection } from './IInstanceProvider.ts';
 export type { IInjectParameter } from './IInjectParameter.ts';
 export { Registration } from './Registration.ts';
+export { validateRegistrations } from './Internal/Validation.ts';
+export type { ValidationProblem } from './Internal/Validation.ts';
 export { RegistrationBuilder } from './RegistrationBuilder.ts';
 export { ObjectResolverToken } from './IObjectResolver.ts';
 export type { IObjectResolver, IScopedObjectResolver } from './IObjectResolver.ts';

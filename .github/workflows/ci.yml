@@ -15,8 +15,17 @@ jobs:
         with:
           node-version: 20
 
+      - name: Install dev dependencies
+        run: npm ci
+
       - name: Check versions are in sync
         run: node scripts/check-versions.js
+
+      - name: Runtime tests
+        run: node scripts/test-runtime.js
+
+      - name: Registration validation tests
+        run: node scripts/test-validation.js
 
       - name: Token codegen tests
         run: node scripts/test-token-codegen.js
