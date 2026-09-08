@@ -30,8 +30,8 @@ export interface ResolutionStep {
 }
 
 /**
- * How much of the walk is kept. A loop resolved with validation off overflows
- * the stack thousands of frames down, and the deepest few say everything the
+ * How much of the walk is kept. A loop `build()` cannot see overflows the
+ * stack thousands of frames down, and the deepest few say everything the
  * thousand above them would.
  */
 const KEPT_STEPS = 12;
@@ -51,7 +51,8 @@ function loopNote(path: readonly ResolutionStep[]): string {
         for (let j = i + 1; j < path.length; j++) {
             if (path[i].type === path[j].type) {
                 return `\n\n  ${typeKeyName(path[i].type)} comes round twice, so this is a circular dependency. `
-                    + 'Leave builder.validateOnBuild on and build() names it before anything is resolved.';
+                    + 'It runs through a factory or a scope built later, which is why build() did not '
+                    + 'name it. Break it by resolving one side at the moment it is needed.';
             }
         }
     }

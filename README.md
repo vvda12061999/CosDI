@@ -403,8 +403,9 @@ CosDI was resolving:
         ...
         factory <- threw here
 
-  InventoryService comes round twice, so this is a circular dependency. Leave builder.validateOnBuild
-  on and build() names it before anything is resolved.
+  InventoryService comes round twice, so this is a circular dependency. It runs through a factory or a
+  scope built later, which is why build() did not name it. Break it by resolving one side at the moment
+  it is needed.
 ```
 
 `CosDIResolutionException` carries the same thing as data: `missingType`, `missingKey`, and `path`, an array of `{ type, site }` from the outermost class down to the gap. `resolutionTree(path, leaf)` draws it the way the message does. Failed resolves are also kept per scope and drawn in the **CosDI Diagnostics** panel, newest first, with repeats collapsed — a failure inside `update()` says `x240` rather than filling the console.
