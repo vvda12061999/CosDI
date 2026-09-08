@@ -11,6 +11,7 @@ import type { IObjectResolver } from '../Runtime/IObjectResolver';
 export class DiagnosticsCollector {
     private readonly diagnosticsInfos: DiagnosticsInfo[] = [];
     private readonly resolveCallStack: DiagnosticsInfo[] = [];
+    parentScopeName = '';
 
     constructor(public readonly scopeName: string) {}
 
@@ -64,6 +65,7 @@ export class DiagnosticsCollector {
                 current.resolveInfo.instances.push(instance);
             }
 
+            DiagnosticsContext.schedulePublish();
             return instance;
         }
         return resolving(registration);

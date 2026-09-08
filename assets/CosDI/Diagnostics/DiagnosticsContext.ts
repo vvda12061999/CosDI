@@ -5,8 +5,31 @@ import { typeKeyName } from '../Runtime/Token';
 import { Lifetime } from '../Runtime/Lifetime';
 import type { IObjectResolver } from '../Runtime/IObjectResolver';
 
+export interface DiagnosticsRegistrationSnapshot {
+    type: string;
+    lifetime: string;
+    refCount: number;
+    resolveTime: number;
+    maxDepth: number;
+    instanceCount: number;
+    dependencies: string[];
+}
+
+export interface DiagnosticsScopeSnapshot {
+    scopeName: string;
+    parentScopeName: string;
+    registrations: DiagnosticsRegistrationSnapshot[];
+}
+
+export interface DiagnosticsSnapshot {
+    scopes: DiagnosticsScopeSnapshot[];
+    collectedAt: number;
+}
+
 const collectors = new Map<string, DiagnosticsCollector>();
 const listeners: Array<(container: IObjectResolver) => void> = [];
+const snapshotListeners: Array<(snapshot: DiagnosticsSnapshot) => void> = [];
+let publishTimer: ReturnType<typeof setTimeout> | null = null;
 
 export class DiagnosticsContext {
     static onContainerBuilt: ((container: IObjectResolver) => void) | null = null;
@@ -70,23 +93,31 @@ export class DiagnosticsContext {
         listeners.push(listener);
     }
 
-    static toJSON(): object {
-        const scopes: Array<{
-            scopeName: string;
-            registrations: Array<{
-                type: string;
-                lifetime: string;
-                refCount: number;
-                resolveTime: number;
-                maxDepth: number;
-                instanceCount: number;
-                dependencies: string[];
-            }>;
-        }> = [];
+    static addSnapshotListener(listener: (snapshot: DiagnosticsSnapshot) => void): void {
+        snapshotListeners.push(listener);
+    }
+
+    static schedulePublish(): void {
+        if (publishTimer != null) {
+            return;
+        }
+        publishTimer = setTimeout(() => {
+            publishTimer = null;
+            publishDiagnosticsSnapshot();
+        }, 100);
+    }
+
+    static toJSON(): DiagnosticsSnapshot {
+        const scopes: DiagnosticsScopeSnapshot[] = [];
+        const parentByName = new Map<string, string>();
+        collectors.forEach((collector) => {
+            parentByName.set(collector.scopeName, collector.parentScopeName || '');
+        });
 
         this.getGroupedDiagnosticsInfos().forEach((infos, scopeName) => {
             scopes.push({
                 scopeName,
+                parentScopeName: parentByName.get(scopeName) || '',
                 registrations: infos.map((info) => ({
                     type: typeKeyName(info.registerInfo.registrationBuilder.implementationType),
                     lifetime: info.resolveInfo
@@ -103,11 +134,25 @@ export class DiagnosticsContext {
             });
         });
 
+        collectors.forEach((collector) => {
+            if (!scopes.some((scope) => scope.scopeName === collector.scopeName)) {
+                scopes.push({
+                    scopeName: collector.scopeName,
+                    parentScopeName: collector.parentScopeName || '',
+                    registrations: [],
+                });
+            }
+        });
+
         return { scopes, collectedAt: Date.now() };
     }
 }
 
 function publishDiagnosticsSnapshot(): void {
+    const snapshot = DiagnosticsContext.toJSON();
     const g = globalThis as any;
-    g.__COSDI_DIAGNOSTICS__ = DiagnosticsContext.toJSON();
+    g.__COSDI_DIAGNOSTICS__ = snapshot;
+    for (const listener of snapshotListeners) {
+        listener(snapshot);
+    }
 }

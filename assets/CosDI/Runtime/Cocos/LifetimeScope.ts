@@ -4,6 +4,7 @@ import { IContainerBuilder, ContainerBuilder } from '../ContainerBuilder';
 import { AmbientResolver } from '../AmbientResolver';
 import { CosDISettings } from './CosDISettings';
 import { DiagnosticsContext } from '../../Diagnostics/DiagnosticsContext';
+import { DiagnosticsBridge } from '../../Diagnostics/DiagnosticsBridge';
 import { IInstaller } from './IInstaller';
 import { ActionInstaller } from './ActionInstaller';
 import { injectNode, injectScene } from './ObjectResolverCocosExtensions';
@@ -92,8 +93,9 @@ export class LifetimeScope extends Component {
     }
 
     protected onLoad(): void {
-        if (CosDISettings.enableDiagnostics && !this.scopeName) {
-            this.scopeName = `${this.node.name} (${this.node.uuid})`;
+        this.ensureScopeName();
+        if (CosDISettings.enableDiagnostics) {
+            DiagnosticsBridge.ensure();
         }
         try {
             if (this.autoRun) {
@@ -155,17 +157,13 @@ export class LifetimeScope extends Component {
             this.parent.container.createScope((builder) => {
                 builder.registerBuildCallback((container) => this.setContainer(container));
                 builder.applicationOrigin = this;
-                builder.diagnostics = CosDISettings.enableDiagnostics
-                    ? DiagnosticsContext.getCollector(this.scopeName)
-                    : null;
+                builder.diagnostics = this.createDiagnosticsCollector();
                 this.installTo(builder);
             });
         } else {
             const builder = new ContainerBuilder();
             builder.applicationOrigin = this;
-            builder.diagnostics = CosDISettings.enableDiagnostics
-                ? DiagnosticsContext.getCollector(this.scopeName)
-                : null;
+            builder.diagnostics = this.createDiagnosticsCollector();
             builder.registerBuildCallback((container) => this.setContainer(container));
             this.installTo(builder);
             builder.build();
@@ -216,6 +214,25 @@ export class LifetimeScope extends Component {
         this.container = container;
         AmbientResolver.push(container);
         this.autoInjectAll();
+        if (CosDISettings.enableDiagnostics) {
+            DiagnosticsBridge.ensure();
+        }
+    }
+
+    private createDiagnosticsCollector() {
+        if (!CosDISettings.enableDiagnostics) {
+            return null;
+        }
+        const collector = DiagnosticsContext.getCollector(this.ensureScopeName());
+        collector.parentScopeName = this.parent ? this.parent.ensureScopeName() : '';
+        return collector;
+    }
+
+    private ensureScopeName(): string {
+        if (!this.scopeName) {
+            this.scopeName = `${this.node.name} (${this.node.uuid})`;
+        }
+        return this.scopeName;
     }
 
     private installTo(builder: IContainerBuilder): void {

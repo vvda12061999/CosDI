@@ -1,36 +1,70 @@
 {
   "package_version": 2,
-  "name": "cosdi",
   "version": "1.0.0",
+  "name": "cosdi",
   "title": "CosDI",
-  "description": "CosDI diagnostics panel — VContainer-style registration and resolve traces for Cocos Creator.",
+  "description": "CosDI diagnostics panel",
   "author": "CosDI",
   "editor": ">=3.8.0",
   "main": "./main.js",
-  "panels": {
-    "diagnostics": {
-      "title": "CosDI Diagnostics",
-      "type": "dockable",
-      "main": "./panels/diagnostics.js",
-      "size": {
-        "min-width": 420,
-        "min-height": 320,
-        "width": 760,
-        "height": 520
+    "panels": {
+      "default": {
+        "title": "CosDI Diagnostics",
+        "type": "dockable",
+        "main": "./panels/default.js",
+        "flags": {
+          "resizable": true,
+          "save": true,
+          "alwaysOnTop": false
+        },
+        "size": {
+          "min-width": 320,
+          "min-height": 150,
+          "width": 520,
+          "height": 360
+        }
+      },
+      "diagnostics": {
+        "title": "CosDI Diagnostics",
+        "type": "dockable",
+        "main": "./panels/diagnostics.js",
+        "flags": {
+          "resizable": true,
+          "save": true,
+          "alwaysOnTop": false
+        },
+        "size": {
+          "min-width": 320,
+          "min-height": 150,
+          "width": 520,
+          "height": 360
+        }
       }
-    }
-  },
+    },
   "contributions": {
     "menu": [
       {
-        "path": "Panel/CosDI/Diagnostics",
+        "path": "i18n:menu.panel",
         "label": "CosDI Diagnostics",
-        "message": "open-diagnostics"
+        "message": "open-panel"
+      },
+      {
+        "path": "i18n:menu.extension",
+        "label": "CosDI Diagnostics",
+        "message": "open-panel"
+      },
+      {
+        "path": "CosDI",
+        "label": "Diagnostics",
+        "message": "open-panel"
       }
     ],
     "messages": {
-      "open-diagnostics": {
-        "methods": ["openDiagnostics"]
+      "open-panel": {
+        "methods": ["openPanel"]
+      },
+      "get-snapshot": {
+        "methods": ["getSnapshot"]
       }
     },
     "scene": {
