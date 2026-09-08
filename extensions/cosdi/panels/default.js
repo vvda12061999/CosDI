@@ -13,7 +13,7 @@ module.exports = Editor.Panel.define({
     <h2>CosDI Diagnostics</h2>
     <ui-button class="refresh">Refresh</ui-button>
   </header>
-  <p class="hint">Play the scene in Game View or the browser. Scopes appear while play is running.</p>
+  <p class="hint">Play the scene in Game View. Scopes and CosDIBenchmarkRunner results appear while play is running.</p>
   <div class="content"></div>
 </section>
 `,
@@ -74,6 +74,12 @@ th, td {
   opacity: 0.7;
   font-size: 12px;
 }
+.bench-detail {
+  margin: 0 0 8px;
+  font: 12px/1.45 Consolas, monospace;
+  white-space: pre-wrap;
+  opacity: 0.9;
+}
 `,
     $: {
         refresh: '.refresh',
@@ -87,11 +93,11 @@ th, td {
             if (!content) {
                 return;
             }
-            if (!data.scopes || data.scopes.length === 0) {
+            if (!hasPayload(data)) {
                 content.innerHTML = '<p class="empty">' + escapeHtml(data.message || waitingMessage()) + '</p>';
                 return;
             }
-            content.innerHTML = renderScopes(data.scopes);
+            content.innerHTML = renderBenchmark(data.benchmark) + renderScopes(data.scopes || []);
         };
 
         if (this.$.refresh) {
@@ -115,7 +121,7 @@ async function readSnapshot() {
     for (const source of sources) {
         try {
             const data = await source();
-            if (data && data.scopes && data.scopes.length) {
+            if (hasPayload(data)) {
                 return data;
             }
         } catch (_error) {}
@@ -144,7 +150,42 @@ async function fromScene() {
 }
 
 function waitingMessage() {
-    return 'Waiting for play. Keep this panel open, enable the CosDI extension, then press Play on a scene that has a LifetimeScope.';
+    return 'Waiting for play. Keep this panel open, enable the CosDI extension, then press Play on a scene that has a LifetimeScope or CosDIBenchmarkRunner.';
+}
+
+function hasPayload(data) {
+    return !!(data && ((data.scopes && data.scopes.length) || data.benchmark));
+}
+
+function renderBenchmark(benchmark) {
+    if (!benchmark) {
+        return '';
+    }
+    const status = benchmark.status === 'done'
+        ? 'Done'
+        : benchmark.status === 'failed'
+            ? 'Failed'
+            : 'Running';
+    const rows = (benchmark.results || []).map((result) => {
+        const heap = result.heapDeltaKb == null ? '-' : Math.round(result.heapDeltaKb) + ' KB';
+        return '<tr>'
+            + '<td>' + escapeHtml(result.name) + '</td>'
+            + '<td>' + escapeHtml(result.sampleGroup) + '</td>'
+            + '<td>' + Number(result.medianMs || 0).toFixed(2) + ' ms</td>'
+            + '<td>' + Number(result.meanMs || 0).toFixed(2) + ' ms</td>'
+            + '<td>' + Math.round(result.nsPerResolve || 0) + '</td>'
+            + '<td>' + escapeHtml(String(heap)) + '</td>'
+            + '</tr>';
+    }).join('');
+    return '<article class="scope">'
+        + '<h3>' + escapeHtml(benchmark.title || 'Benchmark') + '<span class="parent"> (' + escapeHtml(status) + ')</span></h3>'
+        + (benchmark.detail ? '<pre class="bench-detail">' + escapeHtml(benchmark.detail) + '</pre>' : '')
+        + (rows
+            ? '<table><thead><tr><th>Case</th><th>Group</th><th>Median</th><th>Mean</th><th>ns/op</th><th>Heap</th></tr></thead><tbody>'
+                + rows
+                + '</tbody></table>'
+            : '')
+        + '</article>';
 }
 
 function renderScopes(scopes) {

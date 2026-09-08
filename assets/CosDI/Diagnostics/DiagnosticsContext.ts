@@ -21,12 +21,33 @@ export interface DiagnosticsScopeSnapshot {
     registrations: DiagnosticsRegistrationSnapshot[];
 }
 
+export interface DiagnosticsBenchmarkRow {
+    name: string;
+    sampleGroup: string;
+    n: number;
+    medianMs: number;
+    meanMs: number;
+    minMs: number;
+    maxMs: number;
+    nsPerResolve: number;
+    heapDeltaKb: number | null;
+}
+
+export interface DiagnosticsBenchmarkSnapshot {
+    status: 'running' | 'done' | 'failed';
+    title: string;
+    detail: string;
+    results: DiagnosticsBenchmarkRow[];
+}
+
 export interface DiagnosticsSnapshot {
     scopes: DiagnosticsScopeSnapshot[];
     collectedAt: number;
+    benchmark?: DiagnosticsBenchmarkSnapshot;
 }
 
 const collectors = new Map<string, DiagnosticsCollector>();
+let currentBenchmark: DiagnosticsBenchmarkSnapshot | null = null;
 const listeners: Array<(container: IObjectResolver) => void> = [];
 const snapshotListeners: Array<(snapshot: DiagnosticsSnapshot) => void> = [];
 let publishTimer: ReturnType<typeof setTimeout> | null = null;
@@ -97,6 +118,11 @@ export class DiagnosticsContext {
         snapshotListeners.push(listener);
     }
 
+    static setBenchmark(benchmark: DiagnosticsBenchmarkSnapshot | null): void {
+        currentBenchmark = benchmark;
+        publishDiagnosticsSnapshot();
+    }
+
     static schedulePublish(): void {
         if (publishTimer != null) {
             return;
@@ -144,7 +170,11 @@ export class DiagnosticsContext {
             }
         });
 
-        return { scopes, collectedAt: Date.now() };
+        return {
+            scopes,
+            collectedAt: Date.now(),
+            benchmark: currentBenchmark || undefined,
+        };
     }
 }
 

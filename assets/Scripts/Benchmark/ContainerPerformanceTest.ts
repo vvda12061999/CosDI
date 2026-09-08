@@ -15,7 +15,7 @@ import {
 } from './Fixtures';
 import {
     AI, Blackboard, Clock, createDeepDirect, createEnemyDirect, createWideDirect, Damage,
-    deepTokens, deepTypes, Enemy, FieldHeavy, fillerTokens, fillerTypes, IAI, IClock, IDamage,
+    deepTokens, deepTypes, Enemy, FieldHeavy, fillerTokens, fillerTypes, IAI, IBlackboard, IClock, IDamage,
     IDeepRoot, IEnemy, ILogger, IPathfinding, IPlugin, IPopupVm, IRng, ISceneState, IStats,
     IWeapon, IWideSystem, Logger, Pathfinding, PLUGIN_COUNT, pluginTypes, PopupVm, Rng,
     SceneState, Stats, Weapon, wideTokens, wideTypes, WideSystem,

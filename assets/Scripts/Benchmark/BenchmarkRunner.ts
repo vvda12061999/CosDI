@@ -5,7 +5,7 @@ import {
     getBenchmarkCases,
     measure,
 } from './ContainerPerformanceTest';
-import { CosDISettings } from 'cosdi';
+import { CosDISettings, DiagnosticsBridge, DiagnosticsContext } from 'cosdi';
 
 const { ccclass, property, executionOrder } = _decorator;
 
@@ -34,21 +34,23 @@ export class CosDIBenchmarkRunner extends Component {
         CosDISettings.enableDiagnostics = false;
         const results: BenchmarkResult[] = [];
         try {
+            publishBenchmark('running', 'Checking VContainer + deep/wide/gameplay graphs...', []);
             showOverlay('CosDI stress benchmark starting...\nChecking VContainer + deep/wide/gameplay graphs...');
             assertGraphResolves();
             const cases = getBenchmarkCases();
             for (let i = 0; i < cases.length; i++) {
                 const testCase = cases[i];
-                showOverlay(
-                    formatTable(results)
-                    + `\nRunning ${i + 1}/${cases.length}: ${testCase.name} (${testCase.sampleGroup})...`,
-                );
+                const progress = `Running ${i + 1}/${cases.length}: ${testCase.name} (${testCase.sampleGroup})...`;
+                publishBenchmark('running', progress, results);
+                showOverlay(formatTable(results) + `\n${progress}`);
                 await nextFrame();
                 results.push(measure(testCase));
             }
             const table = formatTable(results);
+            const ratios = formatRatios(results);
+            publishBenchmark('done', ratios, results);
             console.log(table);
-            console.log(formatRatios(results));
+            console.log(ratios);
             console.table(results.map((result) => ({
                 Case: result.name,
                 Group: result.sampleGroup,
@@ -59,10 +61,11 @@ export class CosDIBenchmarkRunner extends Component {
                 'ns/op': Math.round(result.nsPerResolve),
                 'Heap KB': result.heapDeltaKb == null ? '-' : Math.round(result.heapDeltaKb),
             })));
-            showOverlay(table + '\n\n' + formatRatios(results));
+            showOverlay(table + '\n\n' + ratios);
             return results;
         } catch (error) {
             const message = '[CosDI] Benchmark failed: ' + (error instanceof Error ? error.message : String(error));
+            publishBenchmark('failed', message, results);
             console.error(message, error);
             showOverlay(message);
             throw error;
@@ -121,6 +124,30 @@ function pad(value: string, width: number): string {
         return value.slice(0, width - 1) + ' ';
     }
     return value + ' '.repeat(width - value.length);
+}
+
+function publishBenchmark(
+    status: 'running' | 'done' | 'failed',
+    detail: string,
+    results: BenchmarkResult[],
+): void {
+    DiagnosticsContext.setBenchmark({
+        status,
+        title: 'CosDI stress benchmark',
+        detail,
+        results: results.map((result) => ({
+            name: result.name,
+            sampleGroup: result.sampleGroup,
+            n: result.n,
+            medianMs: result.medianMs,
+            meanMs: result.meanMs,
+            minMs: result.minMs,
+            maxMs: result.maxMs,
+            nsPerResolve: result.nsPerResolve,
+            heapDeltaKb: result.heapDeltaKb,
+        })),
+    });
+    DiagnosticsBridge.flush();
 }
 
 function showOverlay(text: string): void {

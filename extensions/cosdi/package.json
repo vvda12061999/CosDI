@@ -56,34 +56,12 @@
         "width": 520,
         "height": 360
       }
-    },
-    "diagnostics": {
-      "title": "CosDI Diagnostics",
-      "type": "dockable",
-      "main": "./panels/diagnostics.js",
-      "icon": "./static/icon.png",
-      "flags": {
-        "resizable": true,
-        "save": true,
-        "alwaysOnTop": false
-      },
-      "size": {
-        "min-width": 320,
-        "min-height": 150,
-        "width": 520,
-        "height": 360
-      }
     }
   },
   "contributions": {
     "menu": [
       {
         "path": "i18n:menu.panel",
-        "label": "CosDI Diagnostics",
-        "message": "open-panel"
-      },
-      {
-        "path": "i18n:menu.extension",
         "label": "CosDI Diagnostics",
         "message": "open-panel"
       },

@@ -48,8 +48,9 @@ function startServer() {
                     const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
                     if (parsed && typeof parsed === 'object') {
                         snapshot = parsed;
-                        snapshot.empty = !snapshot.scopes || snapshot.scopes.length === 0;
-                        const key = String(snapshot.collectedAt || 0) + ':' + (snapshot.scopes ? snapshot.scopes.length : 0);
+                        snapshot.empty = (!snapshot.scopes || snapshot.scopes.length === 0) && !snapshot.benchmark;
+                        const key = String(snapshot.collectedAt || 0) + ':' + (snapshot.scopes ? snapshot.scopes.length : 0)
+                            + ':' + (snapshot.benchmark && snapshot.benchmark.status ? snapshot.benchmark.status : '');
                         if (key !== lastLogKey && snapshot.scopes && snapshot.scopes.length) {
                             lastLogKey = key;
                             console.log('[CosDI] Received diagnostics from play/preview (' + snapshot.scopes.length + ' scope' + (snapshot.scopes.length === 1 ? '' : 's') + ')');
@@ -114,19 +115,27 @@ function projectAssetsDir() {
     return path.join(Editor.Project.path, 'assets');
 }
 
-function installRuntime() {
+function installRuntime(force) {
     if (!fs.existsSync(RUNTIME_DIR)) {
         console.warn('[CosDI] Extension runtime folder is missing.');
         return false;
     }
     const assetsDir = projectAssetsDir();
     const dest = path.join(assetsDir, 'CosDI');
+    const version = readExtensionVersion();
+    const marker = path.join(dest, '.installed-version');
+    const alreadyInstalled = fs.existsSync(marker)
+        && fs.existsSync(path.join(dest, 'Runtime', 'index.ts'))
+        && fs.readFileSync(marker, 'utf8').trim() === version;
+    if (!force && alreadyInstalled) {
+        installImportAlias();
+        return true;
+    }
     copyDir(RUNTIME_DIR, dest);
     if (fs.existsSync(FOLDER_META)) {
         fs.copyFileSync(FOLDER_META, path.join(assetsDir, 'CosDI.meta'));
     }
-    const version = readExtensionVersion();
-    fs.writeFileSync(path.join(dest, '.installed-version'), version, 'utf8');
+    fs.writeFileSync(marker, version, 'utf8');
     console.log('[CosDI] Runtime installed to assets/CosDI (v' + version + ')');
     installImportAlias();
     refreshAssets();
@@ -159,6 +168,15 @@ function installImportAlias() {
         fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
     } catch (error) {
         console.warn('[CosDI] Could not write project import map setting', error);
+    }
+
+    try {
+        if (Editor.Profile && typeof Editor.Profile.setProject === 'function') {
+            Promise.resolve(Editor.Profile.setProject('project', 'script.importMap', 'project://import-map.json'))
+                .catch((error) => console.warn('[CosDI] Could not set project import map', error));
+        }
+    } catch (error) {
+        console.warn('[CosDI] Could not set project import map', error);
     }
 
     const tsconfigPath = path.join(projectPath, 'tsconfig.json');
@@ -203,16 +221,19 @@ exports.methods = {
         return snapshot;
     },
     installRuntime() {
-        return installRuntime();
+        return installRuntime(true);
     },
 };
 
 exports.load = function () {
-    installRuntime();
+    installRuntime(false);
     startServer();
     console.log('[CosDI] editor extension loaded');
 };
 
 exports.unload = function () {
     stopServer();
+    try {
+        Editor.Panel.close('cosdi');
+    } catch (_error) {}
 };

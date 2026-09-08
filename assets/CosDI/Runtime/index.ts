@@ -45,6 +45,14 @@ export { EntryPointDispatcher } from './Cocos/EntryPointDispatcher';
 export { EntryPointExceptionHandler } from './Cocos/EntryPointExceptionHandler';
 export { DiagnosticsCollector } from '../Diagnostics/DiagnosticsCollector';
 export { DiagnosticsContext } from '../Diagnostics/DiagnosticsContext';
+export type {
+    DiagnosticsSnapshot,
+    DiagnosticsScopeSnapshot,
+    DiagnosticsRegistrationSnapshot,
+    DiagnosticsBenchmarkSnapshot,
+    DiagnosticsBenchmarkRow,
+} from '../Diagnostics/DiagnosticsContext';
+export { DiagnosticsBridge } from '../Diagnostics/DiagnosticsBridge';
 export { DiagnosticsOverlay } from '../Diagnostics/DiagnosticsOverlay';
 export { DiagnosticsInfo } from '../Diagnostics/DiagnosticsInfo';
 export { RegisterInfo } from '../Diagnostics/RegisterInfo';

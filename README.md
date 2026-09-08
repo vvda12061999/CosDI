@@ -22,7 +22,21 @@
 
 If this saves you time in a Cocos project, please **[⭐ star the repo](https://github.com/vvda12061999/CosDI)**. Stars help other Creator developers find it.
 
-CosDI ports the [VContainer](https://github.com/hadashiA/VContainer) mental model to TypeScript: explicit tokens, `LifetimeScope`, constructor / field injection, nested scopes, and an editor diagnostics window.
+## Contents
+
+1. [Installation](#1-installation)
+2. [Quick start](#2-quick-start)
+   - [Service](#service)
+   - [Register in a LifetimeScope](#register-in-a-lifetimescope)
+   - [Inject a component field](#inject-a-component-field)
+   - [`new Player()` fills constructor deps](#new-player-fills-constructor-deps)
+3. [Proof of concept](#3-proof-of-concept)
+4. [Benchmark](#4-benchmark)
+   - [Environment](#environment)
+5. [Notes](#5-notes)
+6. [How to contribute](#6-how-to-contribute)
+7. [Bug reports](#7-bug-reports)
+8. [How to support](#8-how-to-support)
 
 ---
 
@@ -34,31 +48,26 @@ CosDI ports the [VContainer](https://github.com/hadashiA/VContainer) mental mode
 4. Open the **Project** tab and click **+** (Import).
 5. Select `cosdi.zip`.
 6. Find **CosDI** in the list and **Enable** it.
+7. **Project → Project Settings → Scripting → Import Maps** → choose `import-map.json`, then restart Creator if Play cannot find `cosdi`.
 
 Then use:
 
 ```ts
-import { Lifetime, LifetimeScope, createToken, inject, injectable } from 'cosdi';
+import { LifetimeScope, inject, injectable } from 'cosdi';
 ```
 
 ---
 
 ## 2. Quick start
 
-Cocos does **not** compile parameter / constructor `@` decorators. Use field `@inject` on components, and `@injectable(token)` on plain classes.
+Cocos does **not** compile parameter / constructor `@` decorators. Use field `@inject` on components, and `@injectable(Class)` on plain classes.
 
-### Token + service
+### Service
+
+The class is the service. No interface or token required.
 
 ```ts
-import { createToken } from 'cosdi';
-
-export interface IExampleService {
-    name: string;
-}
-
-export const IExampleService = createToken<IExampleService>('IExampleService');
-
-export class ExampleService implements IExampleService {
+export class ExampleService {
     name = 'ExampleService';
 }
 ```
@@ -67,34 +76,34 @@ export class ExampleService implements IExampleService {
 
 ```ts
 import { _decorator } from 'cc';
-import { Lifetime, LifetimeScope, IContainerBuilder } from 'cosdi';
-import { ExampleService, IExampleService } from './Example';
+import { LifetimeScope, IContainerBuilder } from 'cosdi';
+import { ExampleService } from './Example';
 
 const { ccclass } = _decorator;
 
 @ccclass('GameLifetimeScope')
 export class GameLifetimeScope extends LifetimeScope {
     protected configure(builder: IContainerBuilder): void {
-        builder.register(ExampleService, Lifetime.Singleton).as(IExampleService);
+        builder.register(ExampleService);
     }
 }
 ```
 
-Add `GameLifetimeScope` to a node in the scene.
+Add `GameLifetimeScope` to a node in the scene. `register` is a singleton unless you pass `Lifetime.Scoped` or `Lifetime.Transient`.
 
 ### Inject a component field
 
 ```ts
 import { _decorator, Component } from 'cc';
 import { inject } from 'cosdi';
-import { IExampleService } from './Example';
+import { ExampleService } from './Example';
 
 const { ccclass } = _decorator;
 
 @ccclass('Example')
 export class Example extends Component {
-    @inject(IExampleService)
-    private exampleService: IExampleService;
+    @inject(ExampleService)
+    private exampleService: ExampleService;
 
     start() {
         console.log('Injected field', this.exampleService.name);
@@ -106,11 +115,11 @@ export class Example extends Component {
 
 ```ts
 import { injectable } from 'cosdi';
-import { IExampleService } from './Example';
+import { ExampleService } from './Example';
 
-@injectable(IExampleService)
+@injectable(ExampleService)
 export class Player {
-    constructor(service?: IExampleService) {
+    constructor(service?: ExampleService) {
         console.log('Player constructed with', service && service.name);
     }
 }
@@ -118,7 +127,9 @@ export class Player {
 const player = new Player();
 ```
 
-Pass tokens to `@injectable(...)` in constructor-argument order.
+Pass classes to `@injectable(...)` in constructor-argument order.
+
+To bind an interface instead of the class, use `createToken` and `.as(token)`.
 
 | Lifetime | Meaning |
 | --- | --- |
@@ -144,13 +155,26 @@ Play a scene that has a `LifetimeScope`. Components receive field injection, and
 
 The suite mirrors VContainer’s `ContainerPerformanceTest` (`N = 10_000`, 10 samples, 3 warmup), plus heavier graphs.
 
-Add **CosDIBenchmarkRunner** to a node and press Play.
+Add **CosDIBenchmarkRunner** to a node and press Play. Results appear in Game View and in **Panel → CosDI Diagnostics**.
+
+### Environment
+
+Sample numbers below were taken on this setup. Your times will differ.
+
+| Item | Value |
+| --- | --- |
+| Engine | Cocos Creator 3.8.8 |
+| Mode | Preview in Editor |
+| OS | Windows 11 Pro (build 26200) |
+| CPU | Intel Core i7-14700K |
+| RAM | 32 GB |
+| Diagnostics | Off during the run (`CosDISettings.enableDiagnostics = false`) |
 
 <p align="center">
   <img src="docs/images/benchmark.png" alt="CosDI benchmark results in Game View">
 </p>
 
-Sample results from Preview in Editor on Cocos Creator 3.8.8 (diagnostics off):
+Sample results:
 
 | Case | Group | Median | ns/op |
 | --- | --- | ---: | ---: |
@@ -175,28 +199,33 @@ Singleton / scoped lookup is ~20–30 ns. Combined / Complex stay in the same or
 
 ---
 
-## 6. Releasing
+## 6. How to contribute
 
-Every push/PR to `master` packs `cosdi.zip` in CI. A version tag publishes a [GitHub Release](https://github.com/vvda12061999/CosDI/releases) and [`cosdi` on npm](https://www.npmjs.com/package/cosdi).
+See **[CONTRIBUTING.md](CONTRIBUTING.md)**.
 
-Add an npm Automation token as the `NPM_TOKEN` GitHub Actions secret, then:
-
-```bash
-node scripts/bump-version.js 1.0.1
-git add extensions/cosdi/package.json assets/CosDI/package.json
-git commit -m "Release v1.0.1"
-git tag v1.0.1
-git push origin master --tags
-```
-
-The tag must match `extensions/cosdi/package.json`.
+1. Fork and branch from `master`.
+2. Edit `assets/CosDI/` (runtime) or `extensions/cosdi/` (extension).
+3. Run `node scripts/pack-extension.js` after runtime changes.
+4. Open a pull request. Describe the change and how you tested it.
 
 ---
 
-<p align="center">
-  <strong>If CosDI helped you, a star means a lot.</strong><br>
-  <a href="https://github.com/vvda12061999/CosDI">⭐ Star this project</a>
-</p>
+## 7. Bug reports
+
+Open a **[Bug report](https://github.com/vvda12061999/CosDI/issues/new?template=bug_report.yml)** on GitHub.
+
+Include Creator version, OS, CosDI version, steps to reproduce, expected vs actual, and logs or a screenshot.
+
+Feature ideas: **[Feature request](https://github.com/vvda12061999/CosDI/issues/new?template=feature_request.yml)**.
+
+---
+
+## 8. How to support
+
+See **[SUPPORT.md](SUPPORT.md)**.
+
+- [⭐ Star the repo](https://github.com/vvda12061999/CosDI) so other Creator developers can find it
+- [Buy Me a Coffee](https://buymeacoffee.com/vvda1206) if you want to support development
 
 <p align="center">
   <a href="https://buymeacoffee.com/vvda1206">

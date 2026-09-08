@@ -6,14 +6,22 @@ export class DiagnosticsBridge {
     private static timer: ReturnType<typeof setInterval> | null = null;
     private static lastSentAt = 0;
 
-    static ensure(): void {
-        if (!CosDISettings.enableDiagnostics || this.started) {
+    static ensure(force = false): void {
+        if (this.started) {
+            return;
+        }
+        if (!force && !CosDISettings.enableDiagnostics) {
             return;
         }
         this.started = true;
         DiagnosticsContext.addSnapshotListener((snapshot) => this.post(snapshot));
         this.post(DiagnosticsContext.toJSON());
         this.timer = setInterval(() => this.post(DiagnosticsContext.toJSON()), 400);
+    }
+
+    static flush(): void {
+        this.ensure(true);
+        this.post(DiagnosticsContext.toJSON());
     }
 
     static stop(): void {
