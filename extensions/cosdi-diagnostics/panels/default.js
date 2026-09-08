@@ -304,8 +304,10 @@ function renderFailures(failures) {
         return '';
     }
     const items = failures.slice(0, 10).map((failure) => {
-        const repeats = failure.count > 1 ? ' <span class="dim">x' + failure.count + '</span>' : '';
-        return '<pre class="failure">' + escapeHtml(failure.message) + repeats + '</pre>';
+        const repeats = failure.count > 1
+            ? '<span class="dim">seen ' + failure.count + ' times</span>\n'
+            : '';
+        return '<pre class="failure">' + repeats + escapeHtml(failure.message) + '</pre>';
     }).join('');
     const title = failures.length === 1 ? '1 failed resolve' : failures.length + ' failed resolves';
     return '<details class="failures" open><summary>' + title + '</summary>' + items + '</details>';

@@ -355,7 +355,7 @@ check('the diagnostics panel draws the failures a snapshot carries', () => {
     assert.match(html, /1 failed resolve/);
     assert.match(html, /Nothing registers IAudio/);
     assert.match(html, /field 'audio'/);
-    assert.match(html, /x3/);
+    assert.match(html, /seen 3 times/);
     assert.strictEqual(panel.renderFailures([]), '');
     assert.strictEqual(panel.renderFailures(undefined), '');
 });
