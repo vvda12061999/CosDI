@@ -100,6 +100,12 @@
       },
       "asset-db:asset-change": {
         "methods": ["onAssetChange"]
+      },
+      "asset-db:asset-changed": {
+        "methods": ["onAssetChange"]
+      },
+      "asset-db:ready": {
+        "methods": ["onAssetDbReady"]
       }
     },
     "scene": {
