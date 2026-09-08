@@ -27,6 +27,9 @@ jobs:
       - name: Registration validation tests
         run: node scripts/test-validation.js
 
+      - name: Circular dependency tests
+        run: node scripts/test-circular.js
+
       - name: Token codegen tests
         run: node scripts/test-token-codegen.js
 

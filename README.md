@@ -235,24 +235,37 @@ Add `GameLifetimeScope` to a node in the scene. `register` is a singleton unless
 
 ```
 CosDIValidationException: Container validation found 2 problems:
-  1. PlayerPresenter asks for IPlayerService (constructor parameter 'service'), which nothing registers.
-  2. IInventoryService is registered as something to construct, but it is a key, not a class.
-     Register the class and name it with .as(IInventoryService), or hand over an instance with
-     registerInstance / registerFactory.
+  1. Circular dependency detected: PlayerService -> InventoryService (constructor parameter 'inventory')
+     -> PlayerService (field 'player'). Break it by taking IObjectResolver and resolving one side when it
+     is needed, or by handing one side over with registerFactory.
+  2. IInventoryService is registered as something to construct, but it is a key, not a class. Register the
+     class and name it with .as(IInventoryService), or hand over an instance with registerInstance /
+     registerFactory.
   Set builder.validateOnBuild = false to build anyway, as a dependency that only a child scope registers needs.
 ```
 
-Every problem is reported by the same build, not one per run. It looks at what the container itself creates — `registerInstance` and `registerFactory` hand over a finished object, so those are left alone — and it checks three things:
+Every problem is reported by the same build, not one per run. It looks at what the container itself creates — `registerInstance` and `registerFactory` hand over a finished object, so those are left alone — and it reports four things:
 
 | Reported | Meaning |
 | --- | --- |
+| Circular dependency detected | Something needs itself, straight away or the long way round |
 | asks for X, which nothing registers | A constructor parameter, field or injected method wants something no scope has |
 | has no key for `...` | Nothing tells the container what to inject there: no token, and no registration goes by that name |
 | registered as something to construct, but it is a key | `register(IPlayerService)` where `register(PlayerService).as(IPlayerService)` was meant |
 
-A dependency is looked for in this container and in the scopes above it, which is where the container looks at resolve time. It cannot see a scope built later, so a service that only a child scope registers reads as missing — that is the case for `builder.validateOnBuild = false`, or `ContainerBuilder.validateByDefault = false` for every builder. A cycle is reported as a cycle, whether or not validation is on. `validateRegistrations(registrations, registry)` gives the same list without building, and `CosDIValidationException.problems` carries it.
+A dependency is looked for in this container and in the scopes above it, which is where the container looks at resolve time. It cannot see a scope built later, so a service that only a child scope registers reads as missing — that is the case for `builder.validateOnBuild = false`, or `ContainerBuilder.validateByDefault = false` for every builder. `validateRegistrations(registrations, registry)` gives the same list without building, and `CosDIValidationException.problems` carries it, each with a `kind` and, for a loop, the registrations it runs through.
 
-Reading the registrations costs about 2% of build time, so leaving it on in a shipping build is fine.
+#### Circular dependencies
+
+A loop is checked for whether or not validation is on, because left alone it is a stack overflow at the first resolve rather than anything you can act on. The chain names every step and where each one asks:
+
+```
+Circular dependency detected: PlayerService -> InventoryService (constructor parameter 'inventory') -> PlayerService (field 'player')
+```
+
+Constructor parameters, `@inject` fields and injected methods all count, since field injection happens while the instance is still being made. What the container does not construct ends the walk, so `registerFactory`, `registerInstance` and a value given with `withParameter` break a loop here exactly as they break one at runtime — which is also how you fix one, alongside taking `IObjectResolver` and resolving the other side at the moment you need it.
+
+Each registration is read once, so a graph where services share dependencies costs what it looks like it should: a 34-deep chain whose services each take the two below them is checked in under a millisecond. Validation adds about 2 µs to a twelve-service build, so leaving all of it on in a shipping build is fine.
 
 ### Inject a component field
 

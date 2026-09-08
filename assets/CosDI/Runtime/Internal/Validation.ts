@@ -1,21 +1,26 @@
-import { IInjectParameter } from '../IInjectParameter.ts';
 import { IScopedObjectResolver } from '../IObjectResolver.ts';
 import { Registration } from '../Registration.ts';
-import { TypeKey, typeKeyName, getNamedTypeKey, inferTypeKey } from '../Token.ts';
-import { getInjectTypeInfo } from './InjectMetadata.ts';
+import { TypeKey, typeKeyName } from '../Token.ts';
+import { findCircularDependencies } from './CircularDependency.ts';
+import { dependenciesOf } from './Dependencies.ts';
 import { Registry } from './Registry.ts';
+
+export type ValidationProblemKind = 'cycle' | 'missing' | 'keyless' | 'unconstructible';
 
 /** One thing wrong with a registration, found before anything is resolved. */
 export interface ValidationProblem {
+    readonly kind: ValidationProblemKind;
     readonly registration: Registration;
     readonly type: TypeKey | null;
     readonly message: string;
+    /** For a cycle: what it runs through, with the start repeated at the end. */
+    readonly cycle?: readonly Registration[];
 }
 
 /**
  * Reads every registration the way the container will, and reports what would
- * fail: a dependency nothing registers, a parameter or field with no key to
- * look up, a key registered as if it were a class.
+ * fail: a loop, a dependency nothing registers, a parameter or field with no
+ * key to look up, a key registered as if it were a class.
  *
  * A dependency is looked for here and in the scopes above, which is where the
  * container looks. It cannot see a scope built later, so a service that only
@@ -26,7 +31,7 @@ export function validateRegistrations(
     registry: Registry,
     parent: IScopedObjectResolver | null = null,
 ): ValidationProblem[] {
-    const problems: ValidationProblem[] = [];
+    const problems: ValidationProblem[] = findCircularDependencies(registrations, registry);
     for (const registration of registrations) {
         validateRegistration(registration, registry, parent, problems);
     }
@@ -47,6 +52,7 @@ function validateRegistration(
     const type = registration.implementationType;
     if (typeof type !== 'function') {
         problems.push({
+            kind: 'unconstructible',
             registration,
             type,
             message: `${typeKeyName(type)} is registered as something to construct, but it is a key, not a class. `
@@ -57,90 +63,38 @@ function validateRegistration(
     }
 
     const name = typeKeyName(type);
-    const parameters = registration.provider.parameters ?? null;
-    const info = getInjectTypeInfo(type);
-
-    if (injection === 'constructor') {
-        for (const param of info.constructorParams) {
-            const paramName = param.name || `arg${param.index}`;
-            check(
-                param.token || getNamedTypeKey(param.name),
-                `constructor parameter '${paramName}'`,
-                paramName,
-                param.key,
-                `Pass it to @injectable(...) in constructor order, or give it a value with .withParameter('${paramName}', ...).`,
-            );
-        }
-    }
-
-    for (const prop of info.properties) {
-        const propName = String(prop.propertyKey);
-        check(
-            prop.token || inferTypeKey(prop.name),
-            `field '${propName}'`,
-            propName,
-            prop.key,
-            `Name the key, as in @inject(${pascal(propName)}).`,
-        );
-    }
-
-    for (const method of info.methods) {
-        for (const param of method.params) {
-            const paramName = param.name || `arg${param.index}`;
-            check(
-                param.token,
-                `${String(method.methodName)}() parameter '${paramName}'`,
-                paramName,
-                param.key,
-                'Name the key on the parameter.',
-            );
-        }
-    }
-
-    function check(
-        token: TypeKey | undefined,
-        site: string,
-        siteName: string,
-        key: object | undefined,
-        keylessHint: string,
-    ): void {
-        if (matchesParameter(parameters, token, siteName)) {
-            return;
-        }
-        if (token == null) {
+    for (const dependency of dependenciesOf(registration)) {
+        if (dependency.token == null) {
             problems.push({
+                kind: 'keyless',
                 registration,
                 type,
-                message: `${name} has no key for ${site}: nothing registered goes by that name. ${keylessHint}`,
+                message: `${name} has no key for ${dependency.site}: nothing registered goes by that name. `
+                    + hint(dependency.kind, dependency.name),
             });
-            return;
+            continue;
         }
-        if (isRegistered(token, key, registry, parent)) {
-            return;
+        if (isRegistered(dependency.token, dependency.key, registry, parent)) {
+            continue;
         }
         problems.push({
+            kind: 'missing',
             registration,
-            type: token,
-            message: `${name} asks for ${typeKeyName(token)} (${site}), which nothing registers`
-                + `${key == null ? '' : ` with Key: ${String(key)}`}.`,
+            type: dependency.token,
+            message: `${name} asks for ${typeKeyName(dependency.token)} (${dependency.site}), which nothing registers`
+                + `${dependency.key == null ? '' : ` with Key: ${String(dependency.key)}`}.`,
         });
     }
 }
 
-function matchesParameter(
-    parameters: readonly IInjectParameter[] | null,
-    token: TypeKey | undefined,
-    name: string,
-): boolean {
-    if (!parameters) {
-        return false;
+function hint(kind: string, name: string): string {
+    if (kind === 'field') {
+        return `Name the key, as in @inject(${pascal(name)}).`;
     }
-    for (const parameter of parameters) {
-        if (parameter.match(token as TypeKey, name)) {
-            return true;
-        }
+    if (kind === 'parameter') {
+        return `Pass it to @injectable(...) in constructor order, or give it a value with .withParameter('${name}', ...).`;
     }
-    return false;
+    return 'Name the key on the parameter.';
 }
 
 function isRegistered(

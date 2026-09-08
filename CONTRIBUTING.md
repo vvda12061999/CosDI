@@ -41,6 +41,7 @@ npm ci
 node scripts/check-versions.js
 node scripts/test-runtime.js
 node scripts/test-validation.js
+node scripts/test-circular.js
 node scripts/test-diagnostics-install.js
 node scripts/test-codegen-install.js
 node scripts/pack-extension.js
@@ -68,7 +69,7 @@ CI runs those checks and packs `cosdi-diagnostics.zip` on every PR. Do not commi
 
 ## Code notes
 
-- `build()` validates the registrations and reports every problem at once. Anything new that the container constructs or injects belongs in `Internal/Validation.ts` too, with a case in `scripts/test-validation.js`.
+- `build()` validates the registrations and reports every problem at once, loops included. Anything new that the container constructs or injects belongs in `Internal/Dependencies.ts`, which both the validator and the cycle walk read, with a case in `scripts/test-validation.js` or `scripts/test-circular.js`.
 - Field `@inject(Class)`, or a bare `@inject` when the field name matches what it wants. `@injectable(Class)` on plain classes. No `@` on constructor parameters (Creator can leave `@` in the emitted JS).
 - An interface is keyed by the token generated from its `/** @generateToken */` tag, imported from `cosdi-tokens`. Never hand-edit generated output, and never write a `// cosdi:token` line yourself.
 - Do not put `@injectable()` on `Component` subclasses.

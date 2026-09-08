@@ -29,7 +29,8 @@ export type { IInstanceProvider, ProviderInjection } from './IInstanceProvider.t
 export type { IInjectParameter } from './IInjectParameter.ts';
 export { Registration } from './Registration.ts';
 export { validateRegistrations } from './Internal/Validation.ts';
-export type { ValidationProblem } from './Internal/Validation.ts';
+export type { ValidationProblem, ValidationProblemKind } from './Internal/Validation.ts';
+export { findCircularDependencies } from './Internal/CircularDependency.ts';
 export { RegistrationBuilder } from './RegistrationBuilder.ts';
 export { ObjectResolverToken } from './IObjectResolver.ts';
 export type { IObjectResolver, IScopedObjectResolver } from './IObjectResolver.ts';

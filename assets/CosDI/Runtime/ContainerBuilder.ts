@@ -8,7 +8,7 @@ import { IObjectResolver, IScopedObjectResolver, ObjectResolverToken } from './I
 import { TypeKey, registerNamedTypeKey } from './Token.ts';
 import { ContainerInstanceProvider } from './Internal/InstanceProviders.ts';
 import { Lifetime } from './Lifetime.ts';
-import { checkCircularDependency } from './Internal/CircularDependency.ts';
+import { findCircularDependencies } from './Internal/CircularDependency.ts';
 import { validateRegistrations } from './Internal/Validation.ts';
 import { CosDIValidationException } from './CosDIException.ts';
 import { FuncRegistrationBuilder, InstanceRegistrationBuilder } from './Internal/RegistrationBuilders.ts';
@@ -148,12 +148,13 @@ export class ContainerBuilder implements IContainerBuilder {
         );
 
         const registry = Registry.build(registrations);
-        checkCircularDependency(registrations, registry);
-        if (this.validateOnBuild) {
-            const problems = validateRegistrations(registrations, registry, this.parentResolver);
-            if (problems.length > 0) {
-                throw new CosDIValidationException(problems);
-            }
+        // A loop is checked for either way: left alone it is a stack overflow
+        // at the first resolve, not a message anyone can act on.
+        const problems = this.validateOnBuild
+            ? validateRegistrations(registrations, registry, this.parentResolver)
+            : findCircularDependencies(registrations, registry);
+        if (problems.length > 0) {
+            throw new CosDIValidationException(problems);
         }
         return registry;
     }
