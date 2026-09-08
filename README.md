@@ -10,7 +10,8 @@
 
 <p align="center">
   <a href="https://github.com/vvda12061999/CosDI/stargazers"><img src="https://img.shields.io/github/stars/vvda12061999/CosDI?style=social" alt="GitHub stars"></a>
-  <a href="https://www.npmjs.com/package/cosdi"><img src="https://img.shields.io/npm/v/cosdi" alt="npm"></a>
+  <a href="https://www.npmjs.com/package/cosdi"><img src="https://img.shields.io/npm/v/cosdi?label=cosdi" alt="cosdi on npm"></a>
+  <a href="https://www.npmjs.com/package/cosdi-diagnostics"><img src="https://img.shields.io/npm/v/cosdi-diagnostics?label=cosdi-diagnostics" alt="cosdi-diagnostics on npm"></a>
   <a href="https://github.com/vvda12061999/CosDI/actions/workflows/ci.yml"><img src="https://github.com/vvda12061999/CosDI/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/Cocos%20Creator-3.0%2B-00d4aa" alt="Cocos Creator 3.0+">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License">
@@ -43,11 +44,16 @@ If this saves you time in a Cocos project, please **[⭐ star the repo](https://
 
 ## 1. Installation
 
-In your Cocos Creator project:
+Two packages, both from npm. Run this in your Cocos Creator project root:
 
 ```bash
-npm install cosdi
+npm install cosdi cosdi-diagnostics
 ```
+
+| Package | What it is |
+| --- | --- |
+| [`cosdi`](https://www.npmjs.com/package/cosdi) | The runtime you import from your scripts |
+| [`cosdi-diagnostics`](https://www.npmjs.com/package/cosdi-diagnostics) | The **CosDI Diagnostics** editor panel |
 
 Or from GitHub:
 
@@ -61,7 +67,19 @@ Then:
 import { LifetimeScope, inject, injectable } from 'cosdi';
 ```
 
-For the Diagnostics editor panel, also import [`cosdi.zip`](https://github.com/vvda12061999/CosDI/releases/latest/download/cosdi.zip) in **Extension → Extension Manager → Project**.
+`cosdi-diagnostics` copies itself into `extensions/cosdi-diagnostics` in your project while npm installs it, so no zip import is needed. Restart Cocos Creator and open **Panel → CosDI Diagnostics**.
+
+If npm ran somewhere other than the project root, point it at the project yourself:
+
+```bash
+npx cosdi-diagnostics install --project /path/to/project
+npx cosdi-diagnostics status
+npx cosdi-diagnostics uninstall
+```
+
+Set `COSDI_DIAGNOSTICS_SKIP_INSTALL=1` to skip the automatic copy, and run `npx cosdi-diagnostics uninstall` before `npm uninstall cosdi-diagnostics` so the copied folder goes away with it.
+
+Prefer a manual import? [`cosdi-diagnostics.zip`](https://github.com/vvda12061999/CosDI/releases/latest/download/cosdi-diagnostics.zip) is still attached to every release and works in **Extension → Extension Manager → Project**.
 
 ---
 
@@ -178,7 +196,7 @@ Play a scene that has a `LifetimeScope`. Components receive field injection, and
   <img src="docs/images/poc-diagnostics.png" alt="CosDI running in Cocos Creator — Example injection logs and Diagnostics panel">
 </p>
 
-**CosDI Diagnostics** is a dockable editor tab (drag it next to Console). Keep it open, press Play, and it shows the live scope tree. Open it from **Panel → CosDI Diagnostics**.
+**CosDI Diagnostics** is a dockable editor tab (drag it next to Console) shipped in the `cosdi-diagnostics` package. Keep it open, press Play, and it shows the live scope tree. Open it from **Panel → CosDI Diagnostics**.
 
 ---
 
@@ -236,8 +254,8 @@ Singleton lookup is ~23 ns. Combined / Complex stay in the same order of magnitu
 See **[CONTRIBUTING.md](CONTRIBUTING.md)**.
 
 1. Fork and branch from `master`.
-2. Edit `assets/CosDI/` (runtime) or `extensions/cosdi/` (extension).
-3. Run `node scripts/pack-extension.js` after runtime changes.
+2. Edit `assets/CosDI/` (the `cosdi` runtime) or `extensions/cosdi-diagnostics/` (the `cosdi-diagnostics` editor panel).
+3. Run `node scripts/test-diagnostics-install.js` after touching the install CLI, and `node scripts/pack-extension.js` to rebuild the release zip.
 4. Open a pull request. Describe the change and how you tested it.
 
 ---
