@@ -81,18 +81,28 @@ export class ExampleService {
 
 ### Interface token
 
-Cocos erases `interface`, so it cannot hold a runtime token. Keep the interface and let `createToken` supply the value under the same name:
+Cocos erases `interface`, so it cannot hold a runtime token. Tag the interface and CosDI writes the token for you:
 
 ```ts
+/** @createToken */
 export interface IExampleService {
     name: string;
 }
-export const IExampleService = createToken<IExampleService>('IExampleService');
+export const IExampleService = createToken<IExampleService>('IExampleService'); // cosdi:token
 
 export class ExampleService implements IExampleService {
     name = 'ExampleService';
 }
 ```
+
+You write the tag. The `// cosdi:token` line is generated, so leave it alone and never write it yourself. TypeScript rejects a decorator on an interface — an interface leaves no value to decorate — so the tag is a comment, and the generator produces the value the decorator would have created. It runs when the extension loads, again on every `.ts` save, and on demand from **CosDI → Generate Interface Tokens**. Outside the editor:
+
+```bash
+npx cosdi tokens           # write tokens
+npx cosdi tokens --check   # fail if any are stale, for CI
+```
+
+Delete the tag and the generated line goes away with it. `@createToken('Custom.Name')` sets the token name. Generic interfaces are skipped, because each type argument would need its own token. Writing the `createToken` line by hand still works: the generator leaves any name that already has a value alone.
 
 `IExampleService` is now the interface in type position and the token in value position, so the same name works everywhere:
 
