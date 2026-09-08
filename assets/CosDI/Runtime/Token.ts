@@ -1,3 +1,7 @@
+import type { ServiceTypes } from './index.ts';
+
+export type { ServiceTypes };
+
 export class Token<T = unknown> {
     readonly name: string;
 
@@ -20,12 +24,18 @@ export interface Token<T = unknown> {
     readonly type: T;
 }
 
-export type TypeKey = Function | Token;
+export type TypeKey = Function | Token | string;
 
 export type Constructor<T = unknown> = abstract new (...args: any[]) => T;
 
 /** A runtime key that resolves to `T`: either an interface token or a class. */
 export type TypeKeyOf<T> = Token<T> | Constructor<T>;
+
+/** A key that `ServiceTypes` gives a type to. */
+export type ServiceKey = Extract<keyof ServiceTypes, string>;
+
+/** A known key, without closing the door on keys the map has not seen. */
+export type ServiceKeyHint = ServiceKey | (string & {});
 
 const namedTypeKeys = new Map<string, TypeKey>();
 
@@ -45,9 +55,12 @@ export function getNamedTypeKey(name: string | undefined): TypeKey | undefined {
 /**
  * Creates the runtime key for a type Cocos erases at compile time.
  *
- * For an interface, declare the token next to it under the same name. The
- * interface stays a type, the token becomes its value, and `IExampleService`
- * then works in both positions:
+ * A token is only needed when the key has to be a value. The interface name
+ * works as a key on its own — `builder.register(ExampleService).as('IExampleService')`
+ * — and leaves the interface file holding nothing but the interface.
+ *
+ * Reach for a token when you want the key to survive a rename, or to be
+ * unambiguous under minification:
  *
  * ```ts
  * export interface IExampleService {
@@ -81,6 +94,9 @@ export function typeKeyName(type: TypeKey | null | undefined): string {
     if (type == null) {
         return 'unknown';
     }
+    if (typeof type === 'string') {
+        return type;
+    }
     if (type instanceof Token) {
         return type.name;
     }
@@ -89,4 +105,9 @@ export function typeKeyName(type: TypeKey | null | undefined): string {
 
 export function isToken(value: unknown): value is Token {
     return value instanceof Token;
+}
+
+/** True for a key given by name, such as `'IExampleService'`. */
+export function isServiceKey(value: unknown): value is string {
+    return typeof value === 'string';
 }

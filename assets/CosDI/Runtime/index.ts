@@ -1,7 +1,27 @@
 export { CosDIException, CosDIParentTypeReferenceNotFound } from './CosDIException.ts';
 export { Lifetime } from './Lifetime.ts';
-export { Token, createToken, typeKeyName, isToken } from './Token.ts';
-export type { TypeKey, TypeKeyOf } from './Token.ts';
+export { Token, createToken, typeKeyName, isToken, isServiceKey } from './Token.ts';
+export type { TypeKey, TypeKeyOf, ServiceKey, ServiceKeyHint } from './Token.ts';
+
+/**
+ * Maps a service key to the type it resolves to. An interface leaves no value
+ * behind for a key, so its name is the key, and this map is what tells
+ * TypeScript which type that name stands for:
+ *
+ * ```ts
+ * declare module 'cosdi' {
+ *     interface ServiceTypes {
+ *         'IExampleService': IExampleService;
+ *     }
+ * }
+ * ```
+ *
+ * The CosDI Codegen extension writes that file for you, which is why a tagged
+ * interface needs nothing but the interface. Keys work without the map; only
+ * the resolved type falls back to `object`.
+ */
+export interface ServiceTypes {
+}
 export { isDisposable } from './IDisposable.ts';
 export type { IDisposable } from './IDisposable.ts';
 export type { IInjector } from './IInjector.ts';

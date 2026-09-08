@@ -1,20 +1,28 @@
 import { IObjectResolver } from './IObjectResolver.ts';
 import { IInjectParameter } from './IInjectParameter.ts';
 import { Registration } from './Registration.ts';
-import { TypeKey, TypeKeyOf } from './Token.ts';
+import { ServiceKey, ServiceTypes, TypeKey, TypeKeyOf } from './Token.ts';
 
+export function resolveOf<K extends ServiceKey>(resolver: IObjectResolver, serviceKey: K, key?: object): ServiceTypes[K];
 export function resolveOf<T>(resolver: IObjectResolver, type: TypeKeyOf<T>, key?: object): T;
 export function resolveOf<T = object>(resolver: IObjectResolver, type: TypeKey, key?: object): T;
 export function resolveOf<T>(resolver: IObjectResolver, type: TypeKey, key?: object): T {
     return resolver.resolve(type, key) as T;
 }
 
+export function tryResolveOf<K extends ServiceKey>(resolver: IObjectResolver, serviceKey: K, key?: object): ServiceTypes[K] | null;
 export function tryResolveOf<T>(resolver: IObjectResolver, type: TypeKeyOf<T>, key?: object): T | null;
 export function tryResolveOf<T = object>(resolver: IObjectResolver, type: TypeKey, key?: object): T | null;
 export function tryResolveOf<T>(resolver: IObjectResolver, type: TypeKey, key?: object): T | null {
     return resolver.tryResolve(type, key) as T | null;
 }
 
+export function resolveOrDefault<K extends ServiceKey>(
+    resolver: IObjectResolver,
+    serviceKey: K,
+    defaultValue?: ServiceTypes[K] | null,
+    key?: object,
+): ServiceTypes[K] | null;
 export function resolveOrDefault<T>(
     resolver: IObjectResolver,
     type: TypeKeyOf<T>,
@@ -37,6 +45,7 @@ export function resolveOrDefault<T>(
     return value != null ? (value as T) : defaultValue;
 }
 
+export function resolveAllOf<K extends ServiceKey>(resolver: IObjectResolver, serviceKey: K): ServiceTypes[K][];
 export function resolveAllOf<T>(resolver: IObjectResolver, type: TypeKeyOf<T>): T[];
 export function resolveAllOf<T = object>(resolver: IObjectResolver, type: TypeKey): T[];
 export function resolveAllOf<T>(resolver: IObjectResolver, type: TypeKey): T[] {

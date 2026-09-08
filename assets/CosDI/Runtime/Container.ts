@@ -1,7 +1,7 @@
 import { DiagnosticsCollector } from '../Diagnostics/DiagnosticsCollector.ts';
 import { Registration } from './Registration.ts';
 import { IObjectResolver, IScopedObjectResolver } from './IObjectResolver.ts';
-import { TypeKey, TypeKeyOf, typeKeyName } from './Token.ts';
+import { ServiceKey, ServiceTypes, TypeKey, TypeKeyOf, typeKeyName } from './Token.ts';
 import { Lifetime } from './Lifetime.ts';
 import { Registry } from './Internal/Registry.ts';
 import { CompositeDisposable, Lazy } from './Internal/CompositeDisposable.ts';
@@ -34,6 +34,7 @@ export class ScopedContainer implements IScopedObjectResolver {
         this.applicationOrigin = applicationOrigin;
     }
 
+    resolve<K extends ServiceKey>(serviceKey: K, key?: object): ServiceTypes[K];
     resolve<T>(type: TypeKeyOf<T>, key?: object): T;
     resolve(type: TypeKey, key?: object): object;
     resolve(registration: Registration): object;
@@ -51,6 +52,7 @@ export class ScopedContainer implements IScopedObjectResolver {
         return this.resolveRegistration(registration);
     }
 
+    tryResolve<K extends ServiceKey>(serviceKey: K, key?: object): ServiceTypes[K] | null;
     tryResolve<T>(type: TypeKeyOf<T>, key?: object): T | null;
     tryResolve(type: TypeKey, key?: object): object | null;
     tryResolve(type: TypeKey, key?: object): any {
@@ -61,6 +63,7 @@ export class ScopedContainer implements IScopedObjectResolver {
         return this.resolveRegistration(registration);
     }
 
+    resolveAll<K extends ServiceKey>(serviceKey: K, localOnly?: boolean): ServiceTypes[K][];
     resolveAll<T>(type: TypeKeyOf<T>, localOnly?: boolean): T[];
     resolveAll(type: TypeKey, localOnly?: boolean): object[];
     resolveAll(type: TypeKey, localOnly = false): any[] {
@@ -163,6 +166,7 @@ export class Container implements IObjectResolver {
         this.applicationOrigin = applicationOrigin;
     }
 
+    resolve<K extends ServiceKey>(serviceKey: K, key?: object): ServiceTypes[K];
     resolve<T>(type: TypeKeyOf<T>, key?: object): T;
     resolve(type: TypeKey, key?: object): object;
     resolve(registration: Registration): object;
@@ -180,6 +184,7 @@ export class Container implements IObjectResolver {
         return this.resolveRegistration(registration);
     }
 
+    tryResolve<K extends ServiceKey>(serviceKey: K, key?: object): ServiceTypes[K] | null;
     tryResolve<T>(type: TypeKeyOf<T>, key?: object): T | null;
     tryResolve(type: TypeKey, key?: object): object | null;
     tryResolve(type: TypeKey, key?: object): any {
@@ -190,6 +195,7 @@ export class Container implements IObjectResolver {
         return this.resolveRegistration(registration);
     }
 
+    resolveAll<K extends ServiceKey>(serviceKey: K, localOnly?: boolean): ServiceTypes[K][];
     resolveAll<T>(type: TypeKeyOf<T>, localOnly?: boolean): T[];
     resolveAll(type: TypeKey, localOnly?: boolean): object[];
     resolveAll(type: TypeKey, localOnly = false): any[] {
