@@ -149,9 +149,9 @@ For a field typed as a class, `@inject` on its own is enough:
 private playerService: PlayerService;
 ```
 
-It reads the declared type when your project emits decorator metadata, and otherwise matches the field name against the names classes and tokens registered under: `playerService` finds `PlayerService`, then `IPlayerService`. Registering a class or generating a token is what puts a name in reach, so no extra setup is needed.
+Creator compiles no decorator metadata, so there is no declared type to read at runtime. The field name is what CosDI goes on: `playerService` looks for a registration named `PlayerService`, then one named `IPlayerService`, and registering a class or generating a token is what puts those names in reach. (Where a toolchain does emit `design:type`, that wins.)
 
-Two cases still want an explicit key. Minification rewrites class names, so name the key for a class-typed field in a minified build — `@inject(PlayerService)`. And a field whose name does not match the service it wants needs to say so.
+Two cases want the key spelled out. A field whose name does not match the service it wants has to say so. And a class registers under `Class.name`, which a minifier rewrites, so a class-typed field in a minified build wants `@inject(PlayerService)` — an interface token is a string literal and survives, so `@inject(IPlayerService)` and a bare `@inject` on a matching field name are both safe there.
 
 A string works as a key anywhere a token does, if you would rather not generate anything at all:
 

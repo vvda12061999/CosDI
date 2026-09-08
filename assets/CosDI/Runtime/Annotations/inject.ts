@@ -44,11 +44,12 @@ function record(target: object, propertyKey: string | symbol, token?: TypeKey): 
  * private exampleService: IExampleService;   // a generated interface token
  * ```
  *
- * A bare `@inject` reads the declared type when the project emits decorator
- * metadata, and otherwise matches the field name against the names classes and
- * tokens registered: `playerService` finds `PlayerService`, then
- * `IPlayerService`. Class names do not survive minification, so name the key
- * for a field typed as a class you ship minified.
+ * Creator compiles no decorator metadata, so a bare `@inject` goes on the field
+ * name, matching it against the names classes and tokens registered under:
+ * `playerService` finds `PlayerService`, then `IPlayerService`. A class
+ * registers under `Class.name`, which a minifier rewrites, so name the key for
+ * a class-typed field in a minified build. Token names are string literals and
+ * come through minification unchanged.
  */
 export function inject(target: object, propertyKey: string | symbol): void;
 export function inject(): PropertyDecorator;

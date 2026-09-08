@@ -20,6 +20,8 @@ export class Example extends Component {
     @inject(IExampleService)
     private exampleService: IExampleService;
 
+    // No key: the field name has to match what it wants, and a minified build
+    // needs @inject(Player) instead, since minifying rewrites the class name.
     @inject
     private player: Player;
 
