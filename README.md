@@ -104,6 +104,32 @@ npx cosdi tokens --check   # fail if any are stale, for CI
 
 Delete the tag and the generated line goes away with it. `@createToken('Custom.Name')` sets the token name. Generic interfaces are skipped, because each type argument would need its own token. Writing the `createToken` line by hand still works: the generator leaves any name that already has a value alone.
 
+#### Settings for larger projects
+
+Drop a `cosdi.codegen.json` in the project root to control where the generator looks and what it writes. Every field is optional:
+
+```json
+{
+  "roots": ["assets/Scripts/Contracts"],
+  "exclude": ["Vendor"],
+  "mode": "file",
+  "out": "assets/Scripts/Tokens.generated.ts",
+  "generateOnSave": true
+}
+```
+
+`roots` and `exclude` keep the scan off the rest of the project. A save only revisits the file you saved, so hook cost does not grow with project size; the menu item and the CLI still sweep everything.
+
+`mode: "file"` stops the generator writing into your sources. Tokens go to `out` instead, as one module that exports each interface type and its token under the same name:
+
+```ts
+import { IExampleService } from './Tokens.generated';
+```
+
+In this mode, the file that declares the interface cannot import its own token — TypeScript rejects an import that collides with a local declaration — so keep tagged interfaces in their own files and import tokens where you register and inject them. Switching to `file` clears any inline tokens the generator wrote earlier.
+
+`generateOnSave: false` turns off the save hook and leaves generation to **CosDI → Generate Interface Tokens** and the CLI.
+
 `IExampleService` is now the interface in type position and the token in value position, so the same name works everywhere:
 
 ```ts
