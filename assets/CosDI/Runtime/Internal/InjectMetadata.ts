@@ -11,6 +11,8 @@ export interface InjectPropInfo {
     propertyKey: string | symbol;
     token: TypeKey;
     key?: object;
+    /** Set when `@inject` was given no key, so the name has to answer for it. */
+    name?: string;
 }
 
 export interface InjectMethodInfo {

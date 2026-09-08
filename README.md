@@ -44,16 +44,19 @@ If this saves you time in a Cocos project, please **[⭐ star the repo](https://
 
 ## 1. Installation
 
-Two packages, both from npm. Run this in your Cocos Creator project root:
+All from npm. Run this in your Cocos Creator project root:
 
 ```bash
-npm install cosdi cosdi-diagnostics
+npm install cosdi cosdi-diagnostics cosdi-codegen
 ```
 
 | Package | What it is |
 | --- | --- |
 | [`cosdi`](https://www.npmjs.com/package/cosdi) | The runtime you import from your scripts |
 | [`cosdi-diagnostics`](https://www.npmjs.com/package/cosdi-diagnostics) | The **CosDI Diagnostics** editor panel |
+| [`cosdi-codegen`](https://www.npmjs.com/package/cosdi-codegen) | Gives a tagged interface a token, so it can be a DI key |
+
+Only `cosdi` is required. Skip `cosdi-codegen` if you never key anything by interface.
 
 Or from GitHub:
 
@@ -67,7 +70,7 @@ Then:
 import { LifetimeScope, inject, injectable } from 'cosdi';
 ```
 
-`cosdi-diagnostics` copies itself into `extensions/cosdi-diagnostics` in your project while npm installs it, so no zip import is needed. Restart Cocos Creator and open **Panel → CosDI Diagnostics**.
+Both extensions copy themselves into your project's `extensions/` folder while npm installs them, so no zip import is needed, and `cosdi-codegen` generates your tokens then and there. Restart Cocos Creator: **Panel → CosDI Diagnostics** and the **CosDI** menu are waiting.
 
 If npm ran somewhere other than the project root, point it at the project yourself:
 
@@ -99,110 +102,86 @@ export class ExampleService {
 
 ### Interface as a service
 
-Cocos erases `interface`, so an interface leaves no value behind to use as a DI key. Its **name** is the key instead, and the interface file stays a plain interface:
+Cocos erases `interface`, so an interface leaves no value behind to use as a DI key, and TypeScript rejects a decorator on one. Tag it in a comment and CosDI generates the token for you — outside `assets/`, so your file keeps nothing but the interface:
 
 ```ts
-// IExampleService.ts
-export interface IExampleService {
-    name: string;
+// IPlayerService.ts
+/** @generateToken */
+export interface IPlayerService {
+    attack(): void;
 }
 ```
 
-```ts
-// ExampleService.ts
-import { IExampleService } from './IExampleService';
-
-export class ExampleService implements IExampleService {
-    name = 'ExampleService';
-}
-```
-
-Register the implementation under that name, and inject it the same way:
+The token lands in `node_modules/cosdi-tokens`. Import it and the name works in both positions, as a type and as a value:
 
 ```ts
-builder.register(ExampleService, Lifetime.Singleton).as('IExampleService');
+import { IPlayerService } from 'cosdi-tokens';
+
+builder.register(PlayerService, Lifetime.Singleton).as(IPlayerService);
 ```
 
 ```ts
-@inject('IExampleService')
-private exampleService: IExampleService;
+@inject(IPlayerService)
+private playerService: IPlayerService;
 ```
 
-Nothing is generated into your file, and you import the interface from wherever it lives, like any other type.
+`resolve(IPlayerService)` is typed `IPlayerService`, with no cast. Delete the tag and the token goes with it; rename the interface and the token follows on the next save.
 
-#### Keeping the keys typed
-
-On its own, a key is a string, so `resolve` can only promise `object`. Run the **CosDI Codegen** extension and it writes one declaration file that gives every key its type:
+Prefer importing from your own path? One re-export gives you that, and it is the only file you write:
 
 ```ts
-// cosdi-service-keys.d.ts — generated, do not edit
-import type { IExampleService as IExampleService_ } from './assets/Scripts/IExampleService';
-
-declare module 'cosdi' {
-    interface ServiceTypes {
-        'IExampleService': IExampleService_;
-    }
-}
+// assets/Scripts/Services.ts
+export * from 'cosdi-tokens';
 ```
-
-Nothing imports that file and it holds no runtime code; it sits outside `assets/`, so Creator never compiles it. What it buys you is the type:
 
 ```ts
-const service = container.resolve('IExampleService'); // IExampleService, no cast
+import { IPlayerService } from './Services';
 ```
 
-Keys the map has not seen still resolve, they just come back as `object`. Editors autocomplete the mapped ones inside `@inject('` and `resolve('`.
+`@generateToken('Game.IPlayerService')` sets the token name. Generic interfaces are skipped, because each type argument would need a token of its own. `@createToken` still works as a tag, and calling `createToken('IPlayerService')` by hand still works too: the generator leaves a name that already has a value alone.
 
-Turn it on with a `cosdi.codegen.json` in the project root:
+### Inject without naming the key
 
-```json
-{ "mode": "keys", "include": "exported" }
-```
-
-`include: "exported"` maps every exported interface under `roots`, which is what keeps your files free of annotations. `include: "tagged"` (the default) maps only interfaces marked `/** @createToken */`, and `@createToken('Game.IExampleService')` sets the key. Generic interfaces are skipped either way, because each type argument would need a key of its own.
-
-#### Tokens, when a string is not enough
-
-A string key is a name, so renaming the interface does not rename its key, and two interfaces cannot share a name. When you would rather have a value the compiler tracks, `createToken` still makes one:
+For a field typed as a class, `@inject` on its own is enough:
 
 ```ts
-export interface IExampleService {
-    name: string;
-}
-export const IExampleService = createToken<IExampleService>('IExampleService');
+@inject
+private playerService: PlayerService;
 ```
 
-That is the trade: the token is refactor-safe and typed without a generated map, at the cost of a line in the file and an import wherever you use it. `IExampleService` is then the interface in type position and the token in value position, so one name works everywhere, and `resolve(IExampleService)` is typed because the token carries the type. `@createToken` on a class still works when you want a class to keep its own key.
+It reads the declared type when your project emits decorator metadata, and otherwise matches the field name against the names classes and tokens registered under: `playerService` finds `PlayerService`, then `IPlayerService`. Registering a class or generating a token is what puts a name in reach, so no extra setup is needed.
 
-The generator can write those tokens for you too. Tag the interface and pick where the token lands:
+Two cases still want an explicit key. Minification rewrites class names, so name the key for a class-typed field in a minified build — `@inject(PlayerService)`. And a field whose name does not match the service it wants needs to say so.
+
+A string works as a key anywhere a token does, if you would rather not generate anything at all:
 
 ```ts
-/** @createToken */
-export interface IExampleService {
-    name: string;
-}
-export const IExampleService = createToken<IExampleService>('IExampleService'); // cosdi:token
+builder.register(PlayerService, Lifetime.Singleton).as('IPlayerService');
+
+@inject('IPlayerService')
+private playerService: IPlayerService;
 ```
 
-The `// cosdi:token` line is generated, so leave it alone and never write it yourself. Delete the tag and it goes away with it.
+That resolves as `object` unless the generator maps it; `mode: "keys"` below writes that map.
 
-#### Generator settings
+### Generator settings
 
-The generator is the **CosDI Codegen** editor extension in [`extensions/cosdi-codegen/`](extensions/cosdi-codegen). Copy that folder into your project's `extensions/` and restart Creator; it is not on npm yet. It runs when the extension loads, again on every `.ts` save, and on demand from **CosDI → Generate Interface Tokens**. Outside the editor, run it from your project root:
+The generator is the **CosDI Codegen** extension. `npm install cosdi-codegen` copies it into `extensions/cosdi-codegen`, generates your tokens on the spot, and needs no configuration. It regenerates when the extension loads, on every `.ts` save, and from **CosDI → Generate Interface Tokens**. Outside the editor:
 
 ```bash
-node extensions/cosdi-codegen/bin/cosdi-codegen.js           # write
-node extensions/cosdi-codegen/bin/cosdi-codegen.js --check   # fail if stale, for CI
+npx cosdi-codegen generate           # write
+npx cosdi-codegen generate --check   # fail if stale, for CI
 ```
 
-Every field of `cosdi.codegen.json` is optional:
+Every field of an optional `cosdi.codegen.json` in the project root:
 
 ```json
 {
-  "roots": ["assets/Scripts/Contracts"],
+  "roots": ["assets/Scripts"],
   "exclude": ["Vendor"],
-  "mode": "keys",
-  "include": "exported",
+  "mode": "package",
+  "packageName": "cosdi-tokens",
+  "include": "tagged",
   "generateOnSave": true
 }
 ```
@@ -213,24 +192,20 @@ Every field of `cosdi.codegen.json` is optional:
 
 | Mode | What lands where | Used as |
 | --- | --- | --- |
-| `keys` | One `.d.ts` at `out`, outside `assets/`; sources untouched | `'IExampleService'` |
-| `inline` (default) | A `// cosdi:token` line beside each interface | `IExampleService`, from its own file |
-| `file` | One module at `out`, which must sit under `assets/` | `IExampleService`, from `./Tokens.generated` |
-| `package` | A local package outside `assets/`, `node_modules/<packageName>` by default | `IExampleService`, from `'cosdi-tokens'` |
+| `package` (default) | A local package outside `assets/`, `node_modules/<packageName>` | `IPlayerService`, from `'cosdi-tokens'` |
+| `keys` | One `.d.ts` outside `assets/` typing string keys; no tokens | `'IPlayerService'` |
+| `file` | One module at `out`, which must sit under `assets/` | `IPlayerService`, from `./Tokens.generated` |
+| `inline` | A `// cosdi:token` line beside each interface | `IPlayerService`, from its own file |
 
-Use `package` to keep generated tokens out of the assets folder:
+Creator resolves bare specifiers with the Node algorithm, which is how the `cosdi` package itself is imported, so the generated package compiles like any dependency. Two things to know: `npm install` wipes `node_modules`, and the generator rewrites the package on the next save, editor load, or `npx cosdi-codegen generate`. A path alias in `tsconfig.json` is not an alternative, because Creator does not read `tsconfig.json` when it compiles.
+
+`keys` mode is the one that generates no token at all. It writes a single declaration mapping each key to its type, so `resolve('IPlayerService')` is typed while your sources stay untouched, and with `"include": "exported"` it needs no tag either:
 
 ```json
-{ "mode": "package", "packageName": "game-tokens" }
+{ "mode": "keys", "include": "exported" }
 ```
 
-```ts
-import { IExampleService } from 'game-tokens';
-```
-
-Creator resolves bare specifiers with the Node algorithm, which is how the `cosdi` package itself is imported, so a generated package works the same way. Two things to know: `npm install` wipes `node_modules`, and the generator rewrites the package on the next save or editor load. A path alias in `tsconfig.json` is not an alternative, because Creator does not read `tsconfig.json` when it compiles.
-
-`file` and `package` mode export the interface type and its token under one name, and never write into your sources. In exchange, the file that declares an interface cannot import its own token — TypeScript rejects an import that collides with a local declaration — so keep tagged interfaces in their own files. Switching modes clears whatever the previous mode wrote.
+Every mode except `inline` exports the interface type and its token under one name and never writes into your sources. In exchange, the file that declares an interface cannot import its own token — TypeScript rejects an import that collides with a local declaration — so keep tagged interfaces in their own files. Switching modes clears whatever the previous mode wrote.
 
 ### Register in a LifetimeScope
 
@@ -264,6 +239,9 @@ const { ccclass } = _decorator;
 export class Example extends Component {
     @inject(ExampleService)
     private exampleService: ExampleService;
+
+    @inject
+    private otherService: OtherService;   // the field name is the key
 
     start() {
         console.log('Injected field', this.exampleService.name);

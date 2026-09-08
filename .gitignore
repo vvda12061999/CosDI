@@ -23,8 +23,9 @@ node_modules/
 #//////////////////////////
 .idea/
 
-# Written when cosdi-diagnostics copies itself into a project
+# Written when an extension copies itself into a project
 extensions/cosdi-diagnostics/.installed-version
+extensions/cosdi-codegen/.installed-version
 
 # Built by scripts/pack-extension.js / GitHub Actions
 cosdi-diagnostics.zip

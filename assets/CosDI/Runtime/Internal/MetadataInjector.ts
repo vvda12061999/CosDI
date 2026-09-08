@@ -2,7 +2,7 @@ import { CosDIException } from '../CosDIException.ts';
 import { IInjector } from '../IInjector.ts';
 import { IInjectParameter } from '../IInjectParameter.ts';
 import { IObjectResolver } from '../IObjectResolver.ts';
-import { typeKeyName, getNamedTypeKey } from '../Token.ts';
+import { TypeKey, typeKeyName, getNamedTypeKey, inferTypeKey } from '../Token.ts';
 import { getInjectTypeInfo, InjectTypeInfo, ORIGINAL_CTOR } from './InjectMetadata.ts';
 import { resolveOrParameter } from '../IObjectResolverExtensions.ts';
 
@@ -53,9 +53,18 @@ export class MetadataInjector implements IInjector {
 
     inject(instance: object, resolver: IObjectResolver, parameters: readonly IInjectParameter[] | null): void {
         for (const prop of this.info.properties) {
+            const token = prop.token || inferTypeKey(prop.name);
+            if (token == null && !matchesParameter(parameters, String(prop.propertyKey))) {
+                throw new CosDIException(
+                    this.type,
+                    `@inject on ${this.type.name}.${String(prop.propertyKey)} has nothing to go on: `
+                    + 'no registration is named after the field. Name the key, as in '
+                    + `@inject(${String(prop.propertyKey).charAt(0).toUpperCase()}${String(prop.propertyKey).slice(1)}).`,
+                );
+            }
             const value = resolveOrParameter(
                 resolver,
-                prop.token,
+                token as TypeKey,
                 String(prop.propertyKey),
                 parameters,
                 prop.key,
@@ -90,6 +99,18 @@ export class MetadataInjector implements IInjector {
             }
         }
     }
+}
+
+function matchesParameter(parameters: readonly IInjectParameter[] | null, name: string): boolean {
+    if (!parameters) {
+        return false;
+    }
+    for (const parameter of parameters) {
+        if (parameter.match(undefined as unknown as TypeKey, name)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 export function describeInjectGraph(type: Function): string {

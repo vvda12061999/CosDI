@@ -21,8 +21,8 @@ jobs:
       - name: Token codegen tests
         run: node scripts/test-token-codegen.js
 
-      - name: Check interface tokens are generated
-        run: node scripts/generate-tokens.js --check
+      - name: Generate interface tokens
+        run: node scripts/generate-tokens.js
 
       - name: Pack cosdi
         working-directory: assets/CosDI
@@ -32,8 +32,15 @@ jobs:
         working-directory: extensions/cosdi-diagnostics
         run: npm pack --dry-run --ignore-scripts
 
+      - name: Pack cosdi-codegen
+        working-directory: extensions/cosdi-codegen
+        run: npm pack --dry-run --ignore-scripts
+
       - name: Install cosdi-diagnostics into a scratch project
         run: node scripts/test-diagnostics-install.js
+
+      - name: Install cosdi-codegen into a scratch project
+        run: node scripts/test-codegen-install.js
 
       - name: Pack extension zip
         run: node scripts/pack-extension.js

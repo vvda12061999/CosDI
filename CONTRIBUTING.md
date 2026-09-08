@@ -39,10 +39,11 @@ Use **[New issue → Feature request](https://github.com/vvda12061999/CosDI/issu
 ```bash
 node scripts/check-versions.js
 node scripts/test-diagnostics-install.js
+node scripts/test-codegen-install.js
 node scripts/pack-extension.js
 ```
 
-6. After adding or removing an exported interface, regenerate the service key map. CI fails when it is stale.
+6. After adding or removing a `@generateToken` interface, regenerate the tokens. They live in `node_modules/cosdi-tokens`, so nothing to commit.
 
 ```bash
 node scripts/generate-tokens.js
@@ -60,11 +61,11 @@ CI runs those checks and packs `cosdi-diagnostics.zip` on every PR. Do not commi
 
 ## Releasing
 
-`node scripts/bump-version.js <version>` keeps `package.json`, `assets/CosDI/package.json` and `extensions/cosdi-diagnostics/package.json` on the same version. Both npm packages are published from the `v*` tag.
+`node scripts/bump-version.js <version>` keeps `package.json`, `assets/CosDI/package.json`, `extensions/cosdi-diagnostics/package.json` and `extensions/cosdi-codegen/package.json` on the same version. All three npm packages are published from the `v*` tag.
 
 ## Code notes
 
-- Field `@inject(Class)` on components. `@injectable(Class)` on plain classes. No `@` on constructor parameters (Creator can leave `@` in the emitted JS).
-- An interface is keyed by its name: `.as('IExampleService')`, `@inject('IExampleService')`. `cosdi-service-keys.d.ts` is generated, so never edit it by hand, and neither a `// cosdi:token` line.
+- Field `@inject(Class)`, or a bare `@inject` when the field name matches what it wants. `@injectable(Class)` on plain classes. No `@` on constructor parameters (Creator can leave `@` in the emitted JS).
+- An interface is keyed by the token generated from its `/** @generateToken */` tag, imported from `cosdi-tokens`. Never hand-edit generated output, and never write a `// cosdi:token` line yourself.
 - Do not put `@injectable()` on `Component` subclasses.
 - Match nearby TypeScript style. No extra docs files unless the change needs them.

@@ -174,6 +174,19 @@ check('handles several interfaces in one file', () => {
     assert.strictEqual((out.text.match(/import \{ createToken \}/g) || []).length, 1);
 });
 
+check('@generateToken and @createToken mean the same thing', () => {
+    const body = ['export interface IFoo {', '    a: number;', '}', ''].join('\n');
+    const fromNew = run('/** @generateToken */\n' + body).text;
+    const fromOld = run('/** @createToken */\n' + body).text;
+    assert.ok(fromNew.indexOf("createToken<IFoo>('IFoo'); // cosdi:token") > 0, fromNew);
+    assert.strictEqual(fromNew.replace('@generateToken', '@createToken'), fromOld);
+});
+
+check('a line comment carries the tag too', () => {
+    const out = run(['// @generateToken', 'export interface IFoo {', '    a: number;', '}'].join('\n'));
+    assert.strictEqual(out.tokens.length, 1);
+});
+
 check('leaves untagged files untouched', () => {
     const source = ['export interface IFoo {', '    a: number;', '}', ''].join('\n');
     assert.strictEqual(run(source).text, source);
@@ -192,22 +205,33 @@ function project(files, config) {
     return root;
 }
 
-const tagged = (name) => ['/** @createToken */', 'export interface ' + name + ' {', '    a: number;', '}', ''].join('\n');
+const tagged = (name) => ['/** @generateToken */', 'export interface ' + name + ' {', '    a: number;', '}', ''].join('\n');
 
-check('config falls back to defaults', () => {
+check('config falls back to defaults, which keep generated code out of assets', () => {
     const root = project({ 'assets/Scripts/A.ts': tagged('IA') });
     const config = loadConfig(root);
     assert.deepStrictEqual(config.roots, [path.join(root, 'assets')]);
-    assert.strictEqual(config.mode, 'inline');
+    assert.strictEqual(config.mode, 'package');
+    assert.strictEqual(config.out, path.join(root, 'node_modules', 'cosdi-tokens'));
     assert.strictEqual(config.generateOnSave, true);
     assert.strictEqual(config.error, null);
+});
+
+check('the default run writes a token package and leaves the source alone', () => {
+    const source = tagged('IA');
+    const root = project({ 'assets/Scripts/A.ts': source });
+    const result = generateTokens(loadConfig(root));
+    assert.strictEqual(result.tokens, 1);
+    assert.strictEqual(fs.readFileSync(path.join(root, 'assets/Scripts/A.ts'), 'utf8'), source);
+    const index = fs.readFileSync(path.join(root, 'node_modules/cosdi-tokens/index.ts'), 'utf8');
+    assert.match(index, /export const IA = createToken<IA_>\('IA'\);/);
 });
 
 check('config narrows the roots that are scanned', () => {
     const root = project({
         'assets/Scripts/A.ts': tagged('IA'),
         'assets/Legacy/B.ts': tagged('IB'),
-    }, { roots: ['assets/Scripts'] });
+    }, { mode: 'inline', roots: ['assets/Scripts'] });
     const result = generateTokens(loadConfig(root));
     assert.strictEqual(result.tokens, 1);
     assert.ok(fs.readFileSync(path.join(root, 'assets/Scripts/A.ts'), 'utf8').indexOf('cosdi:token') > 0);
@@ -226,7 +250,7 @@ check('a single file can be regenerated on its own', () => {
     const root = project({
         'assets/Scripts/A.ts': tagged('IA'),
         'assets/Scripts/B.ts': tagged('IB'),
-    });
+    }, { mode: 'inline' });
     const config = loadConfig(root);
     const result = generateTokens(Object.assign({}, config, { files: [path.join(root, 'assets/Scripts/A.ts')] }));
     assert.strictEqual(result.scanned, 1);
@@ -249,7 +273,7 @@ check('file mode keeps sources untouched', () => {
 });
 
 check('file mode clears inline tokens left from the other mode', () => {
-    const root = project({ 'assets/Scripts/A.ts': tagged('IA') });
+    const root = project({ 'assets/Scripts/A.ts': tagged('IA') }, { mode: 'inline' });
     generateTokens(loadConfig(root));
     assert.ok(fs.readFileSync(path.join(root, 'assets/Scripts/A.ts'), 'utf8').indexOf('cosdi:token') > 0);
 
@@ -276,7 +300,7 @@ check('file mode removes the module when the last tag goes', () => {
     const out = path.join(root, 'assets/cosdi-tokens.generated.ts');
     assert.ok(fs.existsSync(out));
 
-    fs.writeFileSync(path.join(root, 'assets/Scripts/A.ts'), tagged('IA').replace('/** @createToken */\n', ''), 'utf8');
+    fs.writeFileSync(path.join(root, 'assets/Scripts/A.ts'), tagged('IA').replace('/** @generateToken */\n', ''), 'utf8');
     generateTokens(loadConfig(root));
     assert.strictEqual(fs.existsSync(out), false);
 });
@@ -306,7 +330,7 @@ check('package mode cleans up when the last tag goes', () => {
     const index = path.join(root, 'node_modules/cosdi-tokens/index.ts');
     assert.ok(fs.existsSync(index));
 
-    fs.writeFileSync(path.join(root, 'assets/Scripts/A.ts'), tagged('IA').replace('/** @createToken */\n', ''), 'utf8');
+    fs.writeFileSync(path.join(root, 'assets/Scripts/A.ts'), tagged('IA').replace('/** @generateToken */\n', ''), 'utf8');
     generateTokens(loadConfig(root));
     assert.strictEqual(fs.existsSync(index), false);
     assert.strictEqual(fs.existsSync(path.join(root, 'node_modules/cosdi-tokens/package.json')), false);
@@ -360,7 +384,7 @@ check('keys mode skips interfaces that are not exported or are generic', () => {
 
 check('keys mode honours a custom key name from the tag', () => {
     const root = project({
-        'assets/Scripts/A.ts': tagged('IA').replace('@createToken', "@createToken('Game.IA')"),
+        'assets/Scripts/A.ts': tagged('IA').replace('@generateToken', "@generateToken('Game.IA')"),
     }, { mode: 'keys' });
     generateTokens(loadConfig(root));
     const declaration = fs.readFileSync(path.join(root, 'cosdi-service-keys.d.ts'), 'utf8');
@@ -378,7 +402,7 @@ check('keys mode reports a name claimed by two files', () => {
 });
 
 check('keys mode clears inline tokens left from the other mode', () => {
-    const root = project({ 'assets/Scripts/A.ts': tagged('IA') });
+    const root = project({ 'assets/Scripts/A.ts': tagged('IA') }, { mode: 'inline' });
     generateTokens(loadConfig(root));
     assert.ok(fs.readFileSync(path.join(root, 'assets/Scripts/A.ts'), 'utf8').indexOf('cosdi:token') > 0);
 
@@ -408,7 +432,7 @@ check('keys mode writes nothing under check', () => {
 
 check('check mode writes nothing', () => {
     const source = tagged('IA');
-    const root = project({ 'assets/Scripts/A.ts': source });
+    const root = project({ 'assets/Scripts/A.ts': source }, { mode: 'inline' });
     const result = generateTokens(Object.assign({}, loadConfig(root), { check: true }));
     assert.strictEqual(result.changed.length, 1);
     assert.strictEqual(fs.readFileSync(path.join(root, 'assets/Scripts/A.ts'), 'utf8'), source);

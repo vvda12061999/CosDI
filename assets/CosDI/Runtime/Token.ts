@@ -53,6 +53,23 @@ export function getNamedTypeKey(name: string | undefined): TypeKey | undefined {
 }
 
 /**
+ * Works out what a member called `playerService` asks for when `@inject` is
+ * given nothing: the class `PlayerService`, or the interface `IPlayerService`.
+ * Registering a class or creating a token is what puts a name in reach.
+ */
+export function inferTypeKey(name: string | undefined): TypeKey | undefined {
+    if (!name) {
+        return undefined;
+    }
+    const bare = name.replace(/^_+/, '').replace(/[$_]+$/, '');
+    if (!bare) {
+        return undefined;
+    }
+    const pascal = bare.charAt(0).toUpperCase() + bare.slice(1);
+    return getNamedTypeKey(bare) || getNamedTypeKey(pascal) || getNamedTypeKey('I' + pascal);
+}
+
+/**
  * Creates the runtime key for a type Cocos erases at compile time.
  *
  * A token is only needed when the key has to be a value. The interface name

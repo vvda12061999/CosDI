@@ -81,8 +81,8 @@ function regenerateForSave(file) {
     let contributes = false;
     try {
         const source = fs.readFileSync(file, 'utf8');
-        contributes = source.indexOf('@createToken') >= 0
-            || (config.mode === 'keys' && config.include === 'exported' && /\bexport\s+interface\b/.test(source));
+        contributes = /@(?:generateToken|createToken)\b/.test(source)
+            || (config.include === 'exported' && /\bexport\s+interface\b/.test(source));
     } catch (_error) {
         contributes = false;
     }

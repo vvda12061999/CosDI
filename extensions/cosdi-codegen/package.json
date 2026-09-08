@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "name": "cosdi-codegen",
   "title": "CosDI Codegen",
-  "description": "Writes the createToken constant for every interface tagged with /** @createToken */",
+  "description": "Writes the runtime token for every interface tagged @generateToken, outside the assets folder",
   "author": "vvda12061999",
   "license": "MIT",
   "homepage": "https://github.com/vvda12061999/CosDI",
@@ -15,9 +15,37 @@
     "url": "git+https://github.com/vvda12061999/CosDI.git",
     "directory": "extensions/cosdi-codegen"
   },
+  "keywords": [
+    "cocos",
+    "cocos-creator",
+    "cocos-creator-extension",
+    "di",
+    "dependency-injection",
+    "codegen",
+    "cosdi"
+  ],
+  "peerDependencies": {
+    "cosdi": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "cosdi": {
+      "optional": true
+    }
+  },
   "bin": {
     "cosdi-codegen": "./bin/cosdi-codegen.js"
   },
+  "scripts": {
+    "postinstall": "node ./bin/cosdi-codegen.js install --from-postinstall"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "main.js",
+    "package.json",
+    "LICENSE",
+    "README.md"
+  ],
   "editor": ">=3.0.0",
   "main": "./main.js",
   "contributions": {
