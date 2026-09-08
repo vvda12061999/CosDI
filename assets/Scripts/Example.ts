@@ -1,5 +1,5 @@
 import { _decorator, Component } from 'cc';
-import { injectable, inject, createToken } from 'db://assets/CosDI/Runtime/index';
+import { injectable, inject, createToken } from 'cosdi';
 
 const { ccclass } = _decorator;
 

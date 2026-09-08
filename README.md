@@ -26,84 +26,31 @@ CosDI ports the [VContainer](https://github.com/hadashiA/VContainer) mental mode
 
 ---
 
-## Install
+## 1. Installation
 
-Install CosDI like any other Creator extension. You do **not** copy folders by hand.
-
-### Option A — Extension zip (GitHub Release)
-
-1. Download [`cosdi.zip`](https://github.com/vvda12061999/CosDI/releases/latest/download/cosdi.zip) from the latest release.
+1. Download [`cosdi.zip`](https://github.com/vvda12061999/CosDI/releases/latest/download/cosdi.zip).
 2. Open your game in **Cocos Creator 3.8+**.
-3. **Extension → Extension Manager → Project → +** (Import).
-4. Select `cosdi.zip`, then **Enable** CosDI.
+3. **Extension → Extension Manager**.
+4. Open the **Project** tab and click **+** (Import).
+5. Select `cosdi.zip`.
+6. Find **CosDI** in the list and **Enable** it.
 
-### Option B — npm
-
-From your Cocos Creator **project root**:
-
-```bash
-npx cosdi install
-```
-
-Then **Extension → Extension Manager → Project → Enable CosDI**.
-
-You can also `npm install cosdi` and copy `node_modules/cosdi` to `extensions/cosdi`.
-
-Enabling the extension:
-
-- Installs the DI runtime into `assets/CosDI`
-- Starts the diagnostics listener
-- Adds **Panel → CosDI Diagnostics**
-
-Then import from:
+Then use:
 
 ```ts
-import {
-    Lifetime,
-    LifetimeScope,
-    IContainerBuilder,
-    createToken,
-    inject,
-    injectable,
-} from 'db://assets/CosDI/Runtime/index';
+import { Lifetime, LifetimeScope, createToken, inject, injectable } from 'cosdi';
 ```
-
-To refresh after an update: import the new zip (or run `npx cosdi install` again), then **CosDI → Install Runtime into Project**.
-
-Creator’s packer does not honor a project `import-map.json` alias, so keep the `db://assets/CosDI/Runtime/index` path.
 
 ---
 
-## Releasing (GitHub Actions + npm)
+## 2. Quick start
 
-Every push/PR to `master` packs `cosdi.zip` in CI. Pushing a version tag publishes a [GitHub Release](https://github.com/vvda12061999/CosDI/releases) and the [`cosdi`](https://www.npmjs.com/package/cosdi) npm package.
+Cocos does **not** compile parameter / constructor `@` decorators. Use field `@inject` on components, and `@injectable(token)` on plain classes.
 
-1. Create an npm [Automation access token](https://www.npmjs.com/settings/~/tokens).
-2. In the GitHub repo: **Settings → Secrets and variables → Actions → New repository secret**
-   - Name: `NPM_TOKEN`
-   - Value: the npm token
-3. Bump the version and push a tag:
-
-```bash
-node scripts/bump-version.js 1.0.1
-git add extensions/cosdi/package.json assets/CosDI/package.json
-git commit -m "Release v1.0.1"
-git tag v1.0.1
-git push origin master --tags
-```
-
-The tag (`v1.0.1`) must match `extensions/cosdi/package.json`. You can also run the **Release** workflow manually from the Actions tab.
-
----
-
-## Quick start
-
-Cocos does **not** compile parameter / constructor `@` decorators (they can leak into JS and crash). Use field `@inject` on components, and `@injectable(token)` on plain classes.
-
-### 1. Token + service
+### Token + service
 
 ```ts
-import { createToken } from 'db://assets/CosDI/Runtime/index';
+import { createToken } from 'cosdi';
 
 export interface IExampleService {
     name: string;
@@ -116,11 +63,11 @@ export class ExampleService implements IExampleService {
 }
 ```
 
-### 2. Register in a LifetimeScope
+### Register in a LifetimeScope
 
 ```ts
 import { _decorator } from 'cc';
-import { Lifetime, LifetimeScope, IContainerBuilder } from 'db://assets/CosDI/Runtime/index';
+import { Lifetime, LifetimeScope, IContainerBuilder } from 'cosdi';
 import { ExampleService, IExampleService } from './Example';
 
 const { ccclass } = _decorator;
@@ -133,13 +80,13 @@ export class GameLifetimeScope extends LifetimeScope {
 }
 ```
 
-Add `GameLifetimeScope` to a node in the scene (same role as Unity’s `LifetimeScope`).
+Add `GameLifetimeScope` to a node in the scene.
 
-### 3. Inject a component field
+### Inject a component field
 
 ```ts
 import { _decorator, Component } from 'cc';
-import { inject } from 'db://assets/CosDI/Runtime/index';
+import { inject } from 'cosdi';
 import { IExampleService } from './Example';
 
 const { ccclass } = _decorator;
@@ -155,10 +102,10 @@ export class Example extends Component {
 }
 ```
 
-### 4. `new Player()` fills constructor deps
+### `new Player()` fills constructor deps
 
 ```ts
-import { injectable } from 'db://assets/CosDI/Runtime/index';
+import { injectable } from 'cosdi';
 import { IExampleService } from './Example';
 
 @injectable(IExampleService)
@@ -168,12 +115,10 @@ export class Player {
     }
 }
 
-const player = new Player(); // IExampleService comes from the active scope
+const player = new Player();
 ```
 
-Pass tokens to `@injectable(...)` in **constructor argument order**.
-
-### Lifetimes
+Pass tokens to `@injectable(...)` in constructor-argument order.
 
 | Lifetime | Meaning |
 | --- | --- |
@@ -181,29 +126,25 @@ Pass tokens to `@injectable(...)` in **constructor argument order**.
 | `Scoped` | One instance per scope |
 | `Transient` | New instance every resolve |
 
-Child scopes: `scope.createChild(...)` or `container.createScope(builder => { ... })`.
-
 ---
 
-## Proof of concept
+## 3. Proof of concept
 
-Play a scene that has a `LifetimeScope`. Components receive field injection, and `new Player()` is constructed with the registered service:
+Play a scene that has a `LifetimeScope`. Components receive field injection, and `new Player()` is constructed with the registered service.
 
 <p align="center">
   <img src="docs/images/poc-diagnostics.png" alt="CosDI running in Cocos Creator — Example injection logs and Diagnostics panel">
 </p>
 
-The **CosDI Diagnostics** panel is a normal dockable editor tab (drag it next to Console / Inspector). Enable the `cosdi` extension, keep the panel open, then press Play. It shows the live scope tree, registrations, resolve counts, and parent inheritance.
-
-Open it from **Panel → CosDI Diagnostics**, **Extensions → CosDI Diagnostics**, or **CosDI → Diagnostics**.
+**CosDI Diagnostics** is a dockable editor tab (drag it next to Console). Keep it open, press Play, and it shows the live scope tree. Open it from **Panel → CosDI Diagnostics**.
 
 ---
 
-## Benchmark
+## 4. Benchmark
 
-The suite mirrors VContainer’s `ContainerPerformanceTest` (`N = 10_000`, 10 samples, 3 warmup) and adds heavier graphs (deep chain, wide deps, 200-type container, enemy spawn, nested scopes).
+The suite mirrors VContainer’s `ContainerPerformanceTest` (`N = 10_000`, 10 samples, 3 warmup), plus heavier graphs.
 
-Run it: add **CosDIBenchmarkRunner** (`assets/Scripts/Benchmark/BenchmarkRunner.ts`) to a node and press Play.
+Add **CosDIBenchmarkRunner** to a node and press Play.
 
 <p align="center">
   <img src="docs/images/benchmark.png" alt="CosDI benchmark results in Game View">
@@ -222,31 +163,33 @@ Sample results from Preview in Editor on Cocos Creator 3.8.8 (diagnostics off):
 | ResolveComplex | Direct `new` | 2.60 ms | 87 |
 | ContainerBuildComplex | CosDI | 67.85 ms | 6785 |
 
-**Reading the numbers:** singleton / scoped lookup is cheap (~20–30 ns). Combined / Complex are in the same order of magnitude as plain `new` of the same graph (about 4–6×), which is fine for gameplay resolves. `Direct new` is the theoretical floor with no container.
+Singleton / scoped lookup is ~20–30 ns. Combined / Complex stay in the same order of magnitude as plain `new` (about 4–6×).
 
 ---
 
-## Project layout
+## 5. Notes
 
-```
-extensions/cosdi/             ← import this (or cosdi.zip) in Extension Manager
-  package.json
-  main.js                     installs runtime + diagnostics
-  runtime/                    copied into assets/CosDI on enable
-  panels/                     CosDI Diagnostics editor tab
-assets/Scripts/               sample scene scripts + benchmarks
-cosdi.zip                     built by CI / scripts/pack-extension.js
-
-```
+- Do not put `@` on constructor parameters.
+- Do not put `@injectable()` on `Component` subclasses. Use field `@inject`.
+- `CosDISettings.enableDiagnostics` defaults to `true` for the editor panel. Turn it off in shipping builds if you want zero tracer cost.
 
 ---
 
-## Notes
+## 6. Releasing
 
-- Do not put `@` on constructor parameters. Creator’s compiler can leave the `@` in the emitted JS.
-- Do not put `@injectable()` on `Component` subclasses. The engine constructs those; use field `@inject`.
-- `CosDISettings.enableDiagnostics` defaults to `true` so the editor panel can receive play-mode data. Turn it off in shipping builds if you want zero tracer cost.
-- After Enable, **CosDI → Install Runtime into Project** re-copies `assets/CosDI` if you updated the extension zip.
+Every push/PR to `master` packs `cosdi.zip` in CI. A version tag publishes a [GitHub Release](https://github.com/vvda12061999/CosDI/releases) and [`cosdi` on npm](https://www.npmjs.com/package/cosdi).
+
+Add an npm Automation token as the `NPM_TOKEN` GitHub Actions secret, then:
+
+```bash
+node scripts/bump-version.js 1.0.1
+git add extensions/cosdi/package.json assets/CosDI/package.json
+git commit -m "Release v1.0.1"
+git tag v1.0.1
+git push origin master --tags
+```
+
+The tag must match `extensions/cosdi/package.json`.
 
 ---
 

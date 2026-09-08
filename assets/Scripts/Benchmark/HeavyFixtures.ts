@@ -1,4 +1,4 @@
-import { createToken, inject, injectable, TypeKey } from 'db://assets/CosDI/Runtime/index';
+import { createToken, inject, injectable, TypeKey } from 'cosdi';
 
 export const DEEP_DEPTH = 12;
 export const WIDE_COUNT = 16;

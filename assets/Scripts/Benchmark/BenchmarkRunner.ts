@@ -5,7 +5,7 @@ import {
     getBenchmarkCases,
     measure,
 } from './ContainerPerformanceTest';
-import { CosDISettings } from 'db://assets/CosDI/Runtime/index';
+import { CosDISettings } from 'cosdi';
 
 const { ccclass, property, executionOrder } = _decorator;
 

@@ -1,5 +1,5 @@
 import { _decorator } from 'cc';
-import { Lifetime, LifetimeScope, IContainerBuilder } from 'db://assets/CosDI/Runtime/index';
+import { Lifetime, LifetimeScope, IContainerBuilder } from 'cosdi';
 import { ExampleService, IExampleService } from './Example';
 
 const { ccclass } = _decorator;

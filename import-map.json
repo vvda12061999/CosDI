@@ -1,6 +1,5 @@
 {
   "imports": {
-    "cosdi": "db://assets/CosDI/Runtime/index",
-    "cosdi/": "db://assets/CosDI/Runtime/"
+    "cosdi": "./assets/CosDI/Runtime/index.ts"
   }
 }

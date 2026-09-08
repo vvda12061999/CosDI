@@ -8,8 +8,7 @@
     "baseUrl": ".",
     "paths": {
       "cosdi": ["./assets/CosDI/Runtime/index.ts"],
-      "cosdi/*": ["./assets/CosDI/Runtime/*"],
-      "db://assets/CosDI/Runtime/index": ["./assets/CosDI/Runtime/index.ts"]
+      "cosdi/*": ["./assets/CosDI/Runtime/*"]
     }
   }
 }

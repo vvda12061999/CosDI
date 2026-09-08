@@ -1,6 +1,6 @@
 import {
     ContainerBuilder, CosDISettings, DiagnosticsContext, IContainerBuilder, IObjectResolver, IScopedObjectResolver, Lifetime,
-} from 'db://assets/CosDI/Runtime/index';
+} from 'cosdi';
 import {
     Combined1, Combined2, Combined3,
     Complex1, Complex2, Complex3,

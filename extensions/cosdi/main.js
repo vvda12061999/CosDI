@@ -128,8 +128,55 @@ function installRuntime() {
     const version = readExtensionVersion();
     fs.writeFileSync(path.join(dest, '.installed-version'), version, 'utf8');
     console.log('[CosDI] Runtime installed to assets/CosDI (v' + version + ')');
+    installImportAlias();
     refreshAssets();
     return true;
+}
+
+function installImportAlias() {
+    const projectPath = Editor.Project.path;
+    const mapPath = path.join(projectPath, 'import-map.json');
+    let map = { imports: {} };
+    try {
+        if (fs.existsSync(mapPath)) {
+            map = JSON.parse(fs.readFileSync(mapPath, 'utf8')) || map;
+        }
+    } catch (_error) {}
+    map.imports = map.imports || {};
+    map.imports.cosdi = './assets/CosDI/Runtime/index.ts';
+    fs.writeFileSync(mapPath, JSON.stringify(map, null, 2) + '\n');
+
+    const settingsPath = path.join(projectPath, 'settings', 'v2', 'packages', 'project.json');
+    try {
+        let settings = { __version__: '1.0.6', script: {} };
+        if (fs.existsSync(settingsPath)) {
+            settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) || settings;
+        } else {
+            fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
+        }
+        settings.script = settings.script || {};
+        settings.script.importMap = 'project://import-map.json';
+        fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+    } catch (error) {
+        console.warn('[CosDI] Could not write project import map setting', error);
+    }
+
+    const tsconfigPath = path.join(projectPath, 'tsconfig.json');
+    try {
+        let tsconfig = { compilerOptions: { paths: {} } };
+        if (fs.existsSync(tsconfigPath)) {
+            tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, 'utf8')) || tsconfig;
+        }
+        tsconfig.compilerOptions = tsconfig.compilerOptions || {};
+        tsconfig.compilerOptions.baseUrl = tsconfig.compilerOptions.baseUrl || '.';
+        tsconfig.compilerOptions.paths = tsconfig.compilerOptions.paths || {};
+        tsconfig.compilerOptions.paths.cosdi = ['./assets/CosDI/Runtime/index.ts'];
+        fs.writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2) + '\n');
+    } catch (error) {
+        console.warn('[CosDI] Could not write tsconfig paths for cosdi', error);
+    }
+
+    console.log('[CosDI] import { ... } from \'cosdi\' is ready');
 }
 
 function readExtensionVersion() {

@@ -1,4 +1,4 @@
-import { createToken, injectable } from 'db://assets/CosDI/Runtime/index';
+import { createToken, injectable } from 'cosdi';
 
 export const ISingleton1 = createToken<ISingleton1>('ISingleton1');
 export const ISingleton2 = createToken<ISingleton2>('ISingleton2');
