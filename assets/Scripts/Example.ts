@@ -1,23 +1,28 @@
 import { _decorator, Component } from 'cc';
-import { injectable, inject } from 'cosdi';
+import { createToken, injectable, inject } from 'cosdi';
 
 const { ccclass } = _decorator;
 
-export class ExampleService {
+@createToken
+export abstract class IExampleService {
+    abstract name: string;
+}
+
+export class ExampleService implements IExampleService {
     name = 'ExampleService';
 }
 
-@injectable(ExampleService)
+@injectable(IExampleService)
 export class Player {
-    constructor(service?: ExampleService) {
+    constructor(service?: IExampleService) {
         console.log('Player constructed with', service && service.name);
     }
 }
 
 @ccclass('Example')
 export class Example extends Component {
-    @inject(ExampleService)
-    private exampleService: ExampleService;
+    @inject(IExampleService)
+    private exampleService: IExampleService;
 
     start() {
         console.log('Injected field', this.exampleService && this.exampleService.name);

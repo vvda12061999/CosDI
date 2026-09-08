@@ -10,7 +10,7 @@ body:
     id: creator-version
     attributes:
       label: Cocos Creator version
-      placeholder: "3.8.8"
+      placeholder: "3.0.0"
     validations:
       required: true
   - type: dropdown

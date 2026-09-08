@@ -1,6 +1,6 @@
 # Contributing to CosDI
 
-Thanks for helping. This repo is a Cocos Creator **3.8.8** project plus the installable `cosdi` extension.
+Thanks for helping. This repo is developed in Cocos Creator **3.8.8**. The installable `cosdi` zip supports **Creator 3.0+**.
 
 ## Bug reports
 

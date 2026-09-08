@@ -5,14 +5,14 @@
 <h1 align="center">CosDI</h1>
 
 <p align="center">
-  <strong>VContainer-style dependency injection for Cocos Creator 3.8</strong>
+  <strong>VContainer-style dependency injection for Cocos Creator 3.x</strong>
 </p>
 
 <p align="center">
   <a href="https://github.com/vvda12061999/CosDI/stargazers"><img src="https://img.shields.io/github/stars/vvda12061999/CosDI?style=social" alt="GitHub stars"></a>
   <a href="https://www.npmjs.com/package/cosdi"><img src="https://img.shields.io/npm/v/cosdi" alt="npm"></a>
   <a href="https://github.com/vvda12061999/CosDI/actions/workflows/ci.yml"><img src="https://github.com/vvda12061999/CosDI/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/Cocos%20Creator-3.8.8-00d4aa" alt="Cocos Creator 3.8.8">
+  <img src="https://img.shields.io/badge/Cocos%20Creator-3.0%2B-00d4aa" alt="Cocos Creator 3.0+">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License">
 </p>
 
@@ -27,6 +27,7 @@ If this saves you time in a Cocos project, please **[⭐ star the repo](https://
 1. [Installation](#1-installation)
 2. [Quick start](#2-quick-start)
    - [Service](#service)
+   - [Interface token](#interface-token)
    - [Register in a LifetimeScope](#register-in-a-lifetimescope)
    - [Inject a component field](#inject-a-component-field)
    - [`new Player()` fills constructor deps](#new-player-fills-constructor-deps)
@@ -43,7 +44,7 @@ If this saves you time in a Cocos project, please **[⭐ star the repo](https://
 ## 1. Installation
 
 1. Download [`cosdi.zip`](https://github.com/vvda12061999/CosDI/releases/latest/download/cosdi.zip).
-2. Open your game in **Cocos Creator 3.8+**.
+2. Open your game in **Cocos Creator 3.0+**.
 3. **Extension → Extension Manager**.
 4. Open the **Project** tab and click **+** (Import).
 5. Select `cosdi.zip`.
@@ -71,6 +72,32 @@ export class ExampleService {
     name = 'ExampleService';
 }
 ```
+
+### Interface token
+
+Cocos erases `interface`, so it cannot hold a runtime token. Use `@createToken` on an abstract class:
+
+```ts
+@createToken
+export abstract class IExampleService {
+    abstract name: string;
+}
+
+export class ExampleService implements IExampleService {
+    name = 'ExampleService';
+}
+```
+
+Then bind and inject the token:
+
+```ts
+builder.register(ExampleService, Lifetime.Singleton).as(IExampleService);
+
+@inject(IExampleService)
+private exampleService: IExampleService;
+```
+
+`createToken('IExampleService')` still works if you need a separate `interface` plus const.
 
 ### Register in a LifetimeScope
 
@@ -128,8 +155,6 @@ const player = new Player();
 ```
 
 Pass classes to `@injectable(...)` in constructor-argument order.
-
-To bind an interface instead of the class, use `createToken` and `.as(token)`.
 
 | Lifetime | Meaning |
 | --- | --- |

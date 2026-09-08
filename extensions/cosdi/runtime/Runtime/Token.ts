@@ -28,8 +28,22 @@ export function getNamedTypeKey(name: string | undefined): TypeKey | undefined {
     return namedTypeKeys.get(name);
 }
 
-export function createToken<T>(name: string): Token<T> {
-    return new Token<T>(name);
+export function createToken<T>(name: string): Token<T>;
+export function createToken<T extends Function>(target: T): T;
+export function createToken(): ClassDecorator;
+export function createToken(target?: string | Function): Token | Function | ClassDecorator {
+    if (target == null) {
+        return ((ctor: Function) => decorateTypeKey(ctor)) as ClassDecorator;
+    }
+    if (typeof target === 'string') {
+        return new Token(target);
+    }
+    return decorateTypeKey(target);
+}
+
+function decorateTypeKey<T extends Function>(ctor: T): T {
+    registerNamedTypeKey(ctor.name, ctor);
+    return ctor;
 }
 
 export function typeKeyName(type: TypeKey | null | undefined): string {

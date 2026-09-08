@@ -155,20 +155,7 @@ function installImportAlias() {
     map.imports.cosdi = './assets/CosDI/Runtime/index.ts';
     fs.writeFileSync(mapPath, JSON.stringify(map, null, 2) + '\n');
 
-    const settingsPath = path.join(projectPath, 'settings', 'v2', 'packages', 'project.json');
-    try {
-        let settings = { __version__: '1.0.6', script: {} };
-        if (fs.existsSync(settingsPath)) {
-            settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) || settings;
-        } else {
-            fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
-        }
-        settings.script = settings.script || {};
-        settings.script.importMap = 'project://import-map.json';
-        fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
-    } catch (error) {
-        console.warn('[CosDI] Could not write project import map setting', error);
-    }
+    writeProjectImportMapSetting(projectPath);
 
     try {
         if (Editor.Profile && typeof Editor.Profile.setProject === 'function') {
@@ -189,12 +176,124 @@ function installImportAlias() {
         tsconfig.compilerOptions.baseUrl = tsconfig.compilerOptions.baseUrl || '.';
         tsconfig.compilerOptions.paths = tsconfig.compilerOptions.paths || {};
         tsconfig.compilerOptions.paths.cosdi = ['./assets/CosDI/Runtime/index.ts'];
+        tsconfig.compilerOptions.paths['cosdi/*'] = ['./assets/CosDI/Runtime/*'];
         fs.writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2) + '\n');
     } catch (error) {
         console.warn('[CosDI] Could not write tsconfig paths for cosdi', error);
     }
 
-    console.log('[CosDI] import { ... } from \'cosdi\' is ready');
+    console.log('[CosDI] Creator ' + readEditorVersion() + ': import { ... } from \'cosdi\' is ready');
+
+    if (versionAtLeast(readEditorVersion(), 3, 3, 0)) {
+        removeNodeModuleAlias(projectPath);
+    } else {
+        installNodeModuleAlias(projectPath);
+    }
+}
+
+function writeProjectImportMapSetting(projectPath) {
+    const version = readEditorVersion();
+    const v2Dir = path.join(projectPath, 'settings', 'v2');
+    const v2Path = path.join(v2Dir, 'packages', 'project.json');
+    const legacyPath = path.join(projectPath, 'settings', 'project.json');
+    const writeV2 = versionAtLeast(version, 3, 5, 0) || fs.existsSync(v2Dir);
+
+    if (writeV2) {
+        mergeImportMapSetting(v2Path, { __version__: '1.0.6', script: {} });
+    }
+    if (fs.existsSync(legacyPath)) {
+        mergeImportMapSetting(legacyPath, {});
+    }
+}
+
+function mergeImportMapSetting(settingsPath, fallback) {
+    try {
+        let settings = fallback;
+        if (fs.existsSync(settingsPath)) {
+            settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) || fallback;
+        } else {
+            fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
+        }
+        settings.script = settings.script || {};
+        settings.script.importMap = 'project://import-map.json';
+        fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+    } catch (error) {
+        console.warn('[CosDI] Could not write project import map setting', error);
+    }
+}
+
+function readEditorVersion() {
+    try {
+        if (Editor.App && Editor.App.version) {
+            return String(Editor.App.version);
+        }
+    } catch (_error) {}
+    try {
+        if (Editor.versions && Editor.versions.editor) {
+            return String(Editor.versions.editor);
+        }
+    } catch (_error) {}
+    return '3.8.0';
+}
+
+function versionAtLeast(raw, major, minor, patch) {
+    const parts = String(raw).split(/[^\d]+/).map((part) => parseInt(part, 10));
+    const a = [parts[0] || 0, parts[1] || 0, parts[2] || 0];
+    const b = [major, minor, patch];
+    for (let i = 0; i < 3; i++) {
+        if (a[i] !== b[i]) {
+            return a[i] > b[i];
+        }
+    }
+    return true;
+}
+
+function installNodeModuleAlias(projectPath) {
+    const pkgDir = path.join(projectPath, 'node_modules', 'cosdi');
+    const target = path.join(projectPath, 'assets', 'CosDI', 'Runtime', 'index.ts');
+    if (!fs.existsSync(target)) {
+        return;
+    }
+    fs.mkdirSync(pkgDir, { recursive: true });
+    let rel = path.relative(pkgDir, target).split(path.sep).join('/');
+    if (!rel.startsWith('.')) {
+        rel = './' + rel;
+    }
+    const source = "export * from '" + rel + "';\n";
+    // Creator 3.0–3.2 has no import maps. Keep main inside this folder and keep the .ts extension.
+    fs.writeFileSync(path.join(pkgDir, 'index.js'), source, 'utf8');
+    fs.writeFileSync(path.join(pkgDir, 'package.json'), JSON.stringify({
+        name: 'cosdi',
+        version: readExtensionVersion(),
+        type: 'module',
+        main: './index.js',
+        module: './index.js',
+    }, null, 2) + '\n', 'utf8');
+    console.log('[CosDI] Creator 3.0–3.2: mapped \'cosdi\' through node_modules/cosdi');
+}
+
+function removeNodeModuleAlias(projectPath) {
+    const pkgDir = path.join(projectPath, 'node_modules', 'cosdi');
+    const indexPath = path.join(pkgDir, 'index.js');
+    if (!fs.existsSync(indexPath)) {
+        return;
+    }
+    try {
+        const body = fs.readFileSync(indexPath, 'utf8');
+        if (body.indexOf('assets/CosDI/Runtime/index') < 0) {
+            return;
+        }
+        fs.unlinkSync(indexPath);
+        const pkgPath = path.join(pkgDir, 'package.json');
+        if (fs.existsSync(pkgPath)) {
+            fs.unlinkSync(pkgPath);
+        }
+        try {
+            fs.rmdirSync(pkgDir);
+        } catch (_error) {}
+    } catch (error) {
+        console.warn('[CosDI] Could not remove leftover node_modules/cosdi', error);
+    }
 }
 
 function readExtensionVersion() {

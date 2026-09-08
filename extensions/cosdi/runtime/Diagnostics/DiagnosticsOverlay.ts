@@ -1,4 +1,5 @@
-import { input, Input, KeyCode } from 'cc';
+import * as cc from 'cc';
+import { KeyCode } from 'cc';
 import { CosDISettings } from '../Runtime/Cocos/CosDISettings';
 import { DiagnosticsContext, DiagnosticsSnapshot, DiagnosticsScopeSnapshot } from './DiagnosticsContext';
 
@@ -30,8 +31,8 @@ export class DiagnosticsOverlay {
     }
 
     private static bindToggle(): void {
-        input.on(Input.EventType.KEY_DOWN, (event) => {
-            if (event.keyCode === KeyCode.F3) {
+        bindEngineKeyDown((keyCode) => {
+            if (keyCode === KeyCode.F3) {
                 this.toggle();
             }
         });
@@ -161,6 +162,22 @@ function headerHtml(): string {
 function getDocument(): Document | null {
     const g = globalThis as any;
     return g.document && g.document.body ? g.document as Document : null;
+}
+
+function bindEngineKeyDown(listener: (keyCode: number) => void): void {
+    const engine = cc as typeof cc & {
+        input?: { on: (type: string, fn: (event: { keyCode: number }) => void) => void };
+        Input?: { EventType: { KEY_DOWN: string } };
+        systemEvent?: { on: (type: string, fn: (event: { keyCode: number }) => void) => void };
+        SystemEvent?: { EventType: { KEY_DOWN: string } };
+    };
+    if (engine.input && engine.Input && engine.Input.EventType) {
+        engine.input.on(engine.Input.EventType.KEY_DOWN, (event) => listener(event.keyCode));
+        return;
+    }
+    if (engine.systemEvent && engine.SystemEvent && engine.SystemEvent.EventType) {
+        engine.systemEvent.on(engine.SystemEvent.EventType.KEY_DOWN, (event) => listener(event.keyCode));
+    }
 }
 
 function escapeHtml(value: string): string {
