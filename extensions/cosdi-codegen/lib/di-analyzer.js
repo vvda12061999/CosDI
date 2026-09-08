@@ -194,6 +194,13 @@ function readChain(masked, text, afterClose) {
     }
 }
 
+/** Reads backwards from `to` over a bounded window, which keeps this linear. */
+function endsWith(masked, to, pattern) {
+    const from = Math.max(0, to - 160);
+    const found = pattern.exec(masked.slice(from, to));
+    return found ? { text: found[0], name: found[1], index: from + found.index } : null;
+}
+
 /** The decorators written above whatever starts at `at`. */
 function decoratorsBefore(masked, text, at) {
     const decorators = [];
@@ -207,8 +214,8 @@ function decoratorsBefore(masked, text, at) {
             return decorators;
         }
 
-        const keyword = /(export|default|abstract|declare)$/.exec(masked.slice(0, end + 1));
-        if (keyword && keyword.index + keyword[1].length === end + 1) {
+        const keyword = endsWith(masked, end + 1, /(export|default|abstract|declare)$/);
+        if (keyword) {
             cursor = keyword.index;
             continue;
         }
@@ -218,25 +225,23 @@ function decoratorsBefore(masked, text, at) {
             if (open < 0) {
                 return decorators;
             }
-            const name = /@([A-Za-z_$][\w$]*)\s*$/.exec(masked.slice(0, open));
+            const name = endsWith(masked, open, /@([A-Za-z_$][\w$]*)\s*$/);
             if (!name) {
                 return decorators;
             }
-            const start = open - name[0].length;
             decorators.unshift({
-                name: name[1],
-                index: start,
+                name: name.name,
+                index: name.index,
                 args: splitArgs(masked, text, open + 1, end),
             });
-            cursor = start;
+            cursor = name.index;
             continue;
         }
 
-        const bare = /@([A-Za-z_$][\w$]*)\s*$/.exec(masked.slice(0, end + 1));
+        const bare = endsWith(masked, end + 1, /@([A-Za-z_$][\w$]*)\s*$/);
         if (bare) {
-            const start = end + 1 - bare[0].length;
-            decorators.unshift({ name: bare[1], index: start, args: null });
-            cursor = start;
+            decorators.unshift({ name: bare.name, index: bare.index, args: null });
+            cursor = bare.index;
             continue;
         }
         return decorators;
@@ -250,8 +255,9 @@ function memberAfter(masked, from) {
         while (index < masked.length && /\s/.test(masked[index])) {
             index++;
         }
+        const ahead = masked.slice(index, index + 160);
         if (masked[index] === '@') {
-            const call = /^@[A-Za-z_$][\w$]*\s*/.exec(masked.slice(index));
+            const call = /^@[A-Za-z_$][\w$]*\s*/.exec(ahead);
             if (!call) {
                 return null;
             }
@@ -265,12 +271,12 @@ function memberAfter(masked, from) {
             }
             continue;
         }
-        const modifier = MODIFIER.exec(masked.slice(index));
+        const modifier = MODIFIER.exec(ahead);
         if (modifier) {
             index += modifier[0].length;
             continue;
         }
-        const name = /^([A-Za-z_$][\w$]*)/.exec(masked.slice(index));
+        const name = /^([A-Za-z_$][\w$]*)/.exec(ahead);
         return name ? name[1] : null;
     }
 }
@@ -327,7 +333,7 @@ function parseFile(file, text) {
     }
 
     readClasses(parsed, masked, text);
-    readRegistrations(parsed, masked, text);
+    readRegistrations(parsed, masked, text, /\bfrom\s*['"]cosdi/.test(text));
     return parsed;
 }
 
@@ -423,7 +429,7 @@ function readMembers(parsed, type, masked, text, open, close) {
     }
 }
 
-function readRegistrations(parsed, masked, text) {
+function readRegistrations(parsed, masked, text, importsCosdi) {
     const call = /\b(register|registerInstance|registerFactory|registerEntryPoint|registerComponentInHierarchy|registerComponentOnNewNode|registerComponentInNewPrefab|add)\s*\(/g;
     let found = call.exec(masked);
     while (found) {
@@ -460,6 +466,7 @@ function readRegistrations(parsed, masked, text) {
                     constructs = constructs && true;
                 }
             }
+            const receiver = endsWith(masked, found.index, /([A-Za-z_$][\w$]*)\s*\.\s*$/);
             parsed.registrations.push({
                 call: found[1],
                 key: key.name,
@@ -468,6 +475,10 @@ function readRegistrations(parsed, masked, text) {
                 contracts,
                 parameters,
                 constructs,
+                // `register` is a common enough method name elsewhere. Only a
+                // call on a builder, in a file that works with CosDI, is read
+                // as a registration the container itself would refuse.
+                container: importsCosdi && (!receiver || /builder|container|scope/i.test(receiver.name)),
             });
         }
         call.lastIndex = close;
@@ -629,7 +640,7 @@ function report(problems, parsed, rule, index, message) {
 function checkRegistrations(model, problems) {
     for (const parsed of model.files) {
         for (const registration of parsed.registrations) {
-            if (registration.call !== 'register' || !registration.constructs) {
+            if (registration.call !== 'register' || !registration.constructs || !registration.container) {
                 continue;
             }
             if (!registration.literal && !model.tokens.has(registration.key)) {

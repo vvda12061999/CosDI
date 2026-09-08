@@ -421,6 +421,96 @@ export class Hud {
     assert.strictEqual(result.errors, 3);
 });
 
+check('a register call that has nothing to do with the container is left alone', () => {
+    const result = analyze({
+        'GameLifetimeScope.ts': SCOPE,
+        'PlayerService.ts': 'export class PlayerService {}\n',
+        'Hud.ts': `
+import { inject } from 'cosdi';
+
+export class Hud {
+    private emitter = { register: (name: string, cb: () => void) => undefined };
+
+    start(): void {
+        this.emitter.register('click', () => undefined);
+    }
+}
+`,
+    });
+
+    assert.deepStrictEqual(result.problems, []);
+});
+
+check('a chained registration is read to the end of the chain', () => {
+    const result = analyze({
+        'GameLifetimeScope.ts': `
+import { LifetimeScope, IContainerBuilder, Lifetime } from 'cosdi';
+
+export class GameLifetimeScope extends LifetimeScope {
+    protected configure(builder: IContainerBuilder): void {
+        builder
+            .register(AudioService, Lifetime.Scoped)
+            .as(IAudioService)
+            .keyed('music')
+            .withParameter('volume', 0.5);
+    }
+}
+`,
+        'AudioService.ts': `
+import { injectable, inject, key } from 'cosdi';
+
+@injectable()
+export class AudioService {
+    constructor(volume: number) {}
+}
+
+export class Hud {
+    @inject(IAudioService)
+    @key('music')
+    private music: IAudioService;
+}
+`,
+    });
+
+    assert.deepStrictEqual(result.problems, []);
+});
+
+check('a project of a thousand files is read in well under a second', () => {
+    const files = {};
+    for (let index = 0; index < 1000; index++) {
+        files[`Service${index}.ts`] = `
+import { injectable, inject } from 'cosdi';
+
+@injectable(Service${index + 1})
+export class Service${index} {
+    constructor(private readonly next: Service${index + 1}) {}
+
+    @inject
+    private playerService: PlayerService;
+}
+`;
+    }
+    files['Service1000.ts'] = 'export class Service1000 {}\n';
+    files['PlayerService.ts'] = 'export class PlayerService {}\n';
+    files['GameLifetimeScope.ts'] = `
+import { LifetimeScope, IContainerBuilder, Lifetime } from 'cosdi';
+
+export class GameLifetimeScope extends LifetimeScope {
+    protected configure(builder: IContainerBuilder): void {
+        builder.register(PlayerService, Lifetime.Singleton);
+${Array.from({ length: 1001 }, (_, index) => `        builder.register(Service${index}, Lifetime.Singleton);`).join('\n')}
+    }
+}
+`;
+
+    const started = Date.now();
+    const result = analyze(files);
+    const elapsed = Date.now() - started;
+
+    assert.deepStrictEqual(result.problems, []);
+    assert.ok(elapsed < 2000, `reading 1000 files took ${elapsed}ms`);
+});
+
 check('the sample project in this repo passes', () => {
     const fs = require('fs');
     const { collectFiles } = require('../extensions/cosdi-codegen/lib/token-codegen.js');
