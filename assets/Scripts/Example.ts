@@ -1,12 +1,8 @@
 import { _decorator, Component } from 'cc';
-import { createToken, injectable, inject } from 'cosdi';
+import { injectable, inject } from 'cosdi';
+import { IExampleService } from './Services';
 
 const { ccclass } = _decorator;
-
-@createToken
-export abstract class IExampleService {
-    abstract name: string;
-}
 
 export class ExampleService implements IExampleService {
     name = 'ExampleService';
@@ -24,10 +20,14 @@ export class Example extends Component {
     @inject(IExampleService)
     private exampleService: IExampleService;
 
+    // No key: the field name has to match what it wants, and a minified build
+    // needs @inject(Player) instead, since minifying rewrites the class name.
+    @inject
+    private player: Player;
+
     start() {
         console.log('Injected field', this.exampleService && this.exampleService.name);
-        const player = new Player();
-        console.log('Created player', player);
+        console.log('Injected player', this.player);
     }
 
     update(_deltaTime: number) {

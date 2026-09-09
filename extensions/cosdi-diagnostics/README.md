@@ -1,6 +1,6 @@
 # CosDI Diagnostics
 
-Cocos Creator 3.0+ editor panel for [CosDI](https://github.com/vvda12061999/CosDI). It shows the live scope tree, registrations and `CosDIBenchmarkRunner` results while you play a scene.
+Cocos Creator 3.0+ editor panel for [CosDI](https://github.com/vvda12061999/CosDI). It shows the live scope tree, registrations, each scope's dependency graph, the resolves that failed and `CosDIBenchmarkRunner` results while you play a scene.
 
 ## Install
 
@@ -37,6 +37,10 @@ npm cannot run a script when a dependency is removed, so run `npx cosdi-diagnost
 1. Keep the panel open and press **Play**.
 2. The runtime posts snapshots to `http://127.0.0.1:38477/diagnostics`, which this extension serves back to the panel.
 3. `CosDISettings.enableDiagnostics` (from `cosdi`) must be `true`. Turn it off for shipping builds or timing runs.
+
+Under each scope, **Dependency graph** draws what the container was built with: every registration, what it asks for, and what answered. It is read off the registrations at build time, so it is there before anything is resolved. What nothing registers is marked in red, and a loop in amber.
+
+**Failed resolves** sits above it when something threw, newest first, each with the walk that led to it: which class asked, at which field or parameter, down to the key nothing answered. The console has them too, but it scrolls; repeats of the same failure collapse into a count, so a resolve failing every frame stays one entry.
 
 ## License
 

@@ -1,21 +1,30 @@
 import { DiagnosticsCollector } from '../Diagnostics/DiagnosticsCollector.ts';
 import { Registration } from './Registration.ts';
-import { TypeKey, createToken } from './Token.ts';
+import { ServiceKey, ServiceTypes, TypeKey, TypeKeyOf, createToken } from './Token.ts';
 import { IDisposable } from './IDisposable.ts';
 import type { IContainerBuilder } from './ContainerBuilder.ts';
+import type { DependencyGraph } from './DependencyGraph.ts';
 
 export const ObjectResolverToken = createToken<IObjectResolver>('IObjectResolver');
 
 export interface IObjectResolver extends IDisposable {
     readonly applicationOrigin: object | null;
     diagnostics: DiagnosticsCollector | null;
+    /** What was registered and what it asks for, read at build time. */
+    readonly dependencyGraph?: DependencyGraph | null;
 
+    resolve<K extends ServiceKey>(serviceKey: K, key?: object): ServiceTypes[K];
+    resolve<T>(type: TypeKeyOf<T>, key?: object): T;
     resolve(type: TypeKey, key?: object): object;
     resolve(registration: Registration): object;
+    tryResolve<K extends ServiceKey>(serviceKey: K, key?: object): ServiceTypes[K] | null;
+    tryResolve<T>(type: TypeKeyOf<T>, key?: object): T | null;
     tryResolve(type: TypeKey, key?: object): object | null;
     createScope(installation?: ((builder: IContainerBuilder) => void) | null): IScopedObjectResolver;
     inject(instance: object): void;
     tryGetRegistration(type: TypeKey, key?: object): Registration | null;
+    resolveAll<K extends ServiceKey>(serviceKey: K, localOnly?: boolean): ServiceTypes[K][];
+    resolveAll<T>(type: TypeKeyOf<T>, localOnly?: boolean): T[];
     resolveAll(type: TypeKey, localOnly?: boolean): object[];
 }
 

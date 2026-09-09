@@ -15,7 +15,7 @@ export class FuncRegistrationBuilder extends RegistrationBuilder {
     }
 
     build(): Registration {
-        const spawner = new FuncInstanceProvider(this.implementationProvider);
+        const spawner = new FuncInstanceProvider(this.implementationProvider, this.implementationType);
         return new Registration(this.implementationType, this.lifetime, this.interfaceTypes, spawner, this.key);
     }
 }

@@ -1,0 +1,4 @@
+{
+  "roots": ["assets/Scripts"],
+  "exclude": ["Benchmark"]
+}

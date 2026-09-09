@@ -8,6 +8,7 @@ const files = [
     'package.json',
     path.join('assets', 'CosDI', 'package.json'),
     path.join('extensions', 'cosdi-diagnostics', 'package.json'),
+    path.join('extensions', 'cosdi-codegen', 'package.json'),
 ];
 
 const versions = files.map((file) => {

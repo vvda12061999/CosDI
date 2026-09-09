@@ -19,6 +19,11 @@
   "exports": {
     ".": "./assets/CosDI/Runtime/index.ts"
   },
+  "scripts": {
+    "test": "node scripts/test-all.js",
+    "tokens": "node scripts/generate-tokens.js",
+    "validate": "node extensions/cosdi-codegen/bin/cosdi-codegen.js validate --project . --strict"
+  },
   "files": [
     "assets/CosDI"
   ],
@@ -28,5 +33,8 @@
     "di",
     "dependency-injection",
     "vcontainer"
-  ]
+  ],
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
 }

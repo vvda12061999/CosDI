@@ -1,41 +1,34 @@
-import { getInjectTypeInfo } from './InjectMetadata.ts';
-import { Registry } from './Registry.ts';
+import { DependencyGraph, buildDependencyGraph, cycleText } from '../DependencyGraph.ts';
 import { Registration } from '../Registration.ts';
-import { TypeKey, typeKeyName } from '../Token.ts';
-import { CosDIException } from '../CosDIException.ts';
-import { CollectionInstanceProvider } from './InstanceProviders.ts';
+import { Registry } from './Registry.ts';
+import type { ValidationProblem } from './Validation.ts';
 
-export function checkCircularDependency(registrations: Registration[], registry: Registry): void {
-    for (const registration of registrations) {
-        if (typeof registration.implementationType !== 'function') {
-            continue;
-        }
-        if (registration.provider instanceof CollectionInstanceProvider) {
-            continue;
-        }
-        const stack: TypeKey[] = [];
-        visit(registration.implementationType as Function, stack, registry);
-    }
+/**
+ * Reports every loop the container would fall into rather than resolve.
+ *
+ * The graph is what decides: a registration the container does not construct
+ * has no edges, so a factory or a registered instance breaks a loop here
+ * exactly as it breaks one at runtime.
+ */
+export function findCircularDependencies(
+    registrations: readonly Registration[],
+    registry: Registry,
+): ValidationProblem[] {
+    return cycleProblems(buildDependencyGraph(registrations, registry));
 }
 
-function visit(type: Function, stack: TypeKey[], registry: Registry): void {
-    if (stack.indexOf(type) >= 0) {
-        const cycle = [...stack, type].map(typeKeyName).join(' -> ');
-        throw new CosDIException(type, `Circular dependency detected: ${cycle}`);
-    }
-    stack.push(type);
-    const info = getInjectTypeInfo(type);
-    for (const param of info.constructorParams) {
-        const dep = registry.tryGet(param.token, param.key);
-        if (dep && typeof dep.implementationType === 'function') {
-            visit(dep.implementationType as Function, stack, registry);
-        }
-    }
-    for (const prop of info.properties) {
-        const dep = registry.tryGet(prop.token, prop.key);
-        if (dep && typeof dep.implementationType === 'function') {
-            visit(dep.implementationType as Function, stack, registry);
-        }
-    }
-    stack.pop();
+/** The same, off a graph that has already been built. */
+export function cycleProblems(graph: DependencyGraph): ValidationProblem[] {
+    return graph.cycles.map((cycle) => {
+        const closing = cycle.nodes[cycle.nodes.length - 1];
+        return {
+            kind: 'cycle' as const,
+            registration: closing.registration,
+            type: closing.type,
+            cycle: cycle.nodes.map((node) => node.registration),
+            message: `Circular dependency detected: ${cycleText(cycle)}. `
+                + 'Break it by taking IObjectResolver and resolving one side when it is needed, '
+                + 'or by handing one side over with registerFactory.',
+        };
+    });
 }

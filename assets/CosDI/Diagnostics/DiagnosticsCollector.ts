@@ -7,11 +7,27 @@ import { RegistrationBuilder } from '../Runtime/RegistrationBuilder.ts';
 import { Lifetime } from '../Runtime/Lifetime.ts';
 import { CollectionInstanceProvider } from '../Runtime/Internal/InstanceProviders.ts';
 import type { IObjectResolver } from '../Runtime/IObjectResolver.ts';
+import type { DependencyGraph } from '../Runtime/DependencyGraph.ts';
+
+/** A resolve that threw, kept so the panel can show it after the fact. */
+export interface DiagnosticsFailure {
+    message: string;
+    /** Repeats collapse: a failure in an update loop would drown the rest. */
+    count: number;
+    at: number;
+}
+
+/** The scope nearest the failure records it; the ones it passes through skip. */
+const recorded = new WeakSet<object>();
+const KEPT_FAILURES = 20;
 
 export class DiagnosticsCollector {
     private readonly diagnosticsInfos: DiagnosticsInfo[] = [];
     private readonly resolveCallStack: DiagnosticsInfo[] = [];
+    private readonly failures: { error: Error; at: number }[] = [];
     parentScopeName = '';
+    /** What the scope's container was built with, kept for the panel. */
+    dependencyGraph: DependencyGraph | null = null;
 
     constructor(public readonly scopeName: string) {}
 
@@ -19,8 +35,41 @@ export class DiagnosticsCollector {
         return this.diagnosticsInfos;
     }
 
+    /**
+     * Read late on purpose: a resolution failure writes its message once the
+     * walk that led to it has unwound, which is after it was recorded.
+     */
+    getFailures(): DiagnosticsFailure[] {
+        const collapsed = new Map<string, DiagnosticsFailure>();
+        for (const failure of this.failures) {
+            const message = `${failure.error.name}: ${failure.error.message}`;
+            const existing = collapsed.get(message);
+            if (existing) {
+                existing.count += 1;
+                existing.at = Math.max(existing.at, failure.at);
+            } else {
+                collapsed.set(message, { message, count: 1, at: failure.at });
+            }
+        }
+        return Array.from(collapsed.values()).sort((a, b) => b.at - a.at);
+    }
+
     clear(): void {
         this.diagnosticsInfos.length = 0;
+        this.failures.length = 0;
+    }
+
+    /** Records a resolve that threw, once, in the scope closest to it. */
+    traceFailure(error: unknown): void {
+        if (!(error instanceof Error) || recorded.has(error)) {
+            return;
+        }
+        recorded.add(error);
+        this.failures.push({ error, at: Date.now() });
+        if (this.failures.length > KEPT_FAILURES) {
+            this.failures.shift();
+        }
+        DiagnosticsContext.schedulePublish();
     }
 
     traceRegister(registerInfo: RegisterInfo): void {
@@ -55,18 +104,33 @@ export class DiagnosticsCollector {
 
             this.resolveCallStack.push(current);
             const started = nowMs();
-            const instance = resolving(registration);
+            let instance;
+            try {
+                instance = resolving(registration);
+            } catch (ex) {
+                this.traceFailure(ex);
+                throw ex;
+            } finally {
+                // A throw halfway down would otherwise leave the stack deep,
+                // and every resolve after it reading as a dependency of it.
+                this.resolveCallStack.pop();
+            }
             const elapsed = nowMs() - started;
-            this.resolveCallStack.pop();
 
             setResolveTime(current, elapsed);
             current.resolveInfo.instanceCount += 1;
             return instance;
         }
-        return resolving(registration);
+        try {
+            return resolving(registration);
+        } catch (ex) {
+            this.traceFailure(ex);
+            throw ex;
+        }
     }
 
     notifyContainerBuilt(container: IObjectResolver): void {
+        this.dependencyGraph = container.dependencyGraph ?? null;
         DiagnosticsContext.notifyContainerBuilt(container);
     }
 }

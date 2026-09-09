@@ -1,22 +1,24 @@
 import { DiagnosticsCollector } from '../Diagnostics/DiagnosticsCollector.ts';
 import { Registration } from './Registration.ts';
 import { IObjectResolver, IScopedObjectResolver } from './IObjectResolver.ts';
-import { TypeKey, typeKeyName } from './Token.ts';
+import { ServiceKey, ServiceTypes, TypeKey, TypeKeyOf } from './Token.ts';
 import { Lifetime } from './Lifetime.ts';
 import { Registry } from './Internal/Registry.ts';
 import { CompositeDisposable, Lazy } from './Internal/CompositeDisposable.ts';
 import { InjectorCache } from './Internal/InjectorCache.ts';
 import { ExistingInstanceProvider, COLLECTION_ANY_KEY, CollectionInstanceProvider } from './Internal/InstanceProviders.ts';
-import { CosDIException } from './CosDIException.ts';
+import { missingRegistration } from './Internal/ResolutionDiagnostics.ts';
 import { IContainerBuilder, ScopedContainerBuilder } from './ContainerBuilder.ts';
 import { isDisposable } from './IDisposable.ts';
 import { isRegistration } from './IObjectResolverExtensions.ts';
+import type { DependencyGraph } from './DependencyGraph.ts';
 
 export class ScopedContainer implements IScopedObjectResolver {
     readonly root: IObjectResolver;
     readonly parent: IScopedObjectResolver | null;
     readonly applicationOrigin: object | null;
     diagnostics: DiagnosticsCollector | null = null;
+    dependencyGraph: DependencyGraph | null = null;
 
     private readonly registry: Registry;
     private readonly sharedInstances = new Map<Registration, Lazy<object>>();
@@ -34,21 +36,27 @@ export class ScopedContainer implements IScopedObjectResolver {
         this.applicationOrigin = applicationOrigin;
     }
 
-    resolve(typeOrRegistration: TypeKey | Registration, key?: object): object {
+    resolve<K extends ServiceKey>(serviceKey: K, key?: object): ServiceTypes[K];
+    resolve<T>(type: TypeKeyOf<T>, key?: object): T;
+    resolve(type: TypeKey, key?: object): object;
+    resolve(registration: Registration): object;
+    resolve(typeOrRegistration: TypeKey | Registration, key?: object): any {
         if (isRegistration(typeOrRegistration)) {
             return this.resolveRegistration(typeOrRegistration);
         }
         const registration = this.tryFindRegistration(typeOrRegistration, key);
         if (!registration) {
-            throw new CosDIException(
-                typeOrRegistration,
-                `No such registration of type: ${typeKeyName(typeOrRegistration)}${key == null ? '' : ` with Key: ${key}`}`,
-            );
+            const failure = missingRegistration(this, typeOrRegistration, key);
+            this.diagnostics?.traceFailure(failure);
+            throw failure;
         }
         return this.resolveRegistration(registration);
     }
 
-    tryResolve(type: TypeKey, key?: object): object | null {
+    tryResolve<K extends ServiceKey>(serviceKey: K, key?: object): ServiceTypes[K] | null;
+    tryResolve<T>(type: TypeKeyOf<T>, key?: object): T | null;
+    tryResolve(type: TypeKey, key?: object): object | null;
+    tryResolve(type: TypeKey, key?: object): any {
         const registration = this.tryFindRegistration(type, key);
         if (!registration) {
             return null;
@@ -56,7 +64,10 @@ export class ScopedContainer implements IScopedObjectResolver {
         return this.resolveRegistration(registration);
     }
 
-    resolveAll(type: TypeKey, localOnly = false): object[] {
+    resolveAll<K extends ServiceKey>(serviceKey: K, localOnly?: boolean): ServiceTypes[K][];
+    resolveAll<T>(type: TypeKeyOf<T>, localOnly?: boolean): T[];
+    resolveAll(type: TypeKey, localOnly?: boolean): object[];
+    resolveAll(type: TypeKey, localOnly = false): any[] {
         const collection = this.tryFindRegistration(type, COLLECTION_ANY_KEY) ?? this.registry.tryGet(type, COLLECTION_ANY_KEY);
         if (!collection) {
             const single = this.tryFindRegistration(type);
@@ -144,6 +155,7 @@ export class ScopedContainer implements IScopedObjectResolver {
 export class Container implements IObjectResolver {
     readonly applicationOrigin: object | null;
     diagnostics: DiagnosticsCollector | null = null;
+    dependencyGraph: DependencyGraph | null = null;
 
     private readonly registry: Registry;
     private readonly rootScope: IScopedObjectResolver;
@@ -156,21 +168,27 @@ export class Container implements IObjectResolver {
         this.applicationOrigin = applicationOrigin;
     }
 
-    resolve(typeOrRegistration: TypeKey | Registration, key?: object): object {
+    resolve<K extends ServiceKey>(serviceKey: K, key?: object): ServiceTypes[K];
+    resolve<T>(type: TypeKeyOf<T>, key?: object): T;
+    resolve(type: TypeKey, key?: object): object;
+    resolve(registration: Registration): object;
+    resolve(typeOrRegistration: TypeKey | Registration, key?: object): any {
         if (isRegistration(typeOrRegistration)) {
             return this.resolveRegistration(typeOrRegistration);
         }
         const registration = this.tryGetRegistration(typeOrRegistration, key);
         if (!registration) {
-            throw new CosDIException(
-                typeOrRegistration,
-                `No such registration of type: ${typeKeyName(typeOrRegistration)}${key == null ? '' : ` with Key: ${key}`}`,
-            );
+            const failure = missingRegistration(this, typeOrRegistration, key);
+            this.diagnostics?.traceFailure(failure);
+            throw failure;
         }
         return this.resolveRegistration(registration);
     }
 
-    tryResolve(type: TypeKey, key?: object): object | null {
+    tryResolve<K extends ServiceKey>(serviceKey: K, key?: object): ServiceTypes[K] | null;
+    tryResolve<T>(type: TypeKeyOf<T>, key?: object): T | null;
+    tryResolve(type: TypeKey, key?: object): object | null;
+    tryResolve(type: TypeKey, key?: object): any {
         const registration = this.tryGetRegistration(type, key);
         if (!registration) {
             return null;
@@ -178,7 +196,10 @@ export class Container implements IObjectResolver {
         return this.resolveRegistration(registration);
     }
 
-    resolveAll(type: TypeKey, localOnly = false): object[] {
+    resolveAll<K extends ServiceKey>(serviceKey: K, localOnly?: boolean): ServiceTypes[K][];
+    resolveAll<T>(type: TypeKeyOf<T>, localOnly?: boolean): T[];
+    resolveAll(type: TypeKey, localOnly?: boolean): object[];
+    resolveAll(type: TypeKey, localOnly = false): any[] {
         const collection = this.registry.tryGet(type, COLLECTION_ANY_KEY);
         if (!collection) {
             const single = this.tryGetRegistration(type);

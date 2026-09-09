@@ -23,7 +23,7 @@ export class EntryPointsBuilder {
         }
 
         containerBuilder.registerBuildCallback((container) => {
-            (container.resolve(EntryPointDispatcher) as EntryPointDispatcher).dispatch();
+            container.resolve(EntryPointDispatcher).dispatch();
         });
     }
 

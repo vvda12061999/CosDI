@@ -80,6 +80,48 @@ th, td {
   white-space: pre-wrap;
   opacity: 0.9;
 }
+.graph {
+  margin-top: 8px;
+}
+.graph summary {
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0.85;
+}
+.graph pre {
+  margin: 6px 0 0;
+  font: 12px/1.5 Consolas, monospace;
+  white-space: pre;
+  overflow-x: auto;
+}
+.graph .dim {
+  opacity: 0.65;
+}
+.graph .unmet {
+  color: var(--color-danger-fill, #d9534f);
+}
+.graph .cycle {
+  color: var(--color-warn-fill, #d0a020);
+}
+.failures {
+  margin-top: 8px;
+}
+.failures summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--color-danger-fill, #d9534f);
+}
+.failures .failure {
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  border-left: 2px solid var(--color-danger-fill, #d9534f);
+  font: 12px/1.5 Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+.failures .dim {
+  opacity: 0.65;
+}
 `,
     $: {
         refresh: '.refresh',
@@ -239,7 +281,10 @@ function renderScopes(scopes) {
             + '<th>Type</th><th>Lifetime</th><th>Resolves</th><th>Time</th><th>Dependencies</th>'
             + '</tr></thead><tbody>'
             + (rows || '<tr><td colspan="5">No registrations yet</td></tr>')
-            + '</tbody></table></article>'
+            + '</tbody></table>'
+            + renderFailures(scope.failures)
+            + renderGraph(scope.graph)
+            + '</article>'
             + children.map((child) => renderScope(child, depth + 1)).join('');
     };
 
@@ -248,6 +293,104 @@ function renderScopes(scopes) {
         .map((scope) => renderScope(scope, 0))
         .join('');
     return rendered + leftover;
+}
+
+/**
+ * Shows the resolves that threw, newest first. The console has them too, but
+ * they scroll away, and this keeps the walk that led to each one to hand.
+ */
+function renderFailures(failures) {
+    if (!failures || !failures.length) {
+        return '';
+    }
+    const items = failures.slice(0, 10).map((failure) => {
+        const repeats = failure.count > 1
+            ? '<span class="dim">seen ' + failure.count + ' times</span>\n'
+            : '';
+        return '<pre class="failure">' + repeats + escapeHtml(failure.message) + '</pre>';
+    }).join('');
+    const title = failures.length === 1 ? '1 failed resolve' : failures.length + ' failed resolves';
+    return '<details class="failures" open><summary>' + title + '</summary>' + items + '</details>';
+}
+
+/**
+ * Draws what the container was built with: every registration, what it asks
+ * for, and what answered. This is read off the registrations at build time, so
+ * it is there before anything is resolved.
+ */
+function renderGraph(graph) {
+    if (!graph || !graph.nodes || !graph.nodes.length) {
+        return '';
+    }
+
+    const byId = new Map(graph.nodes.map((node) => [node.id, node]));
+    const drawn = new Set();
+    const lines = [];
+
+    const label = (node) => {
+        const parts = [node.lifetime + ' ' + node.source];
+        if (node.contracts && node.contracts.length) {
+            parts.push('as ' + node.contracts.join(', '));
+        }
+        if (node.scope === 'parent') {
+            parts.push('from a parent scope');
+        }
+        return escapeHtml(node.name) + ' <span class="dim">[' + escapeHtml(parts.join(', ')) + ']</span>';
+    };
+
+    const draw = (node, indent, site, path, depth) => {
+        if (!node || lines.length > 400) {
+            return;
+        }
+        const from = site ? escapeHtml(site) + ' -&gt; ' : '';
+        if (path.indexOf(node.id) >= 0) {
+            lines.push(indent + from + '<span class="cycle">' + escapeHtml(node.name) + ' (cycle)</span>');
+            return;
+        }
+        const again = drawn.has(node.id) && node.edges.length > 0;
+        lines.push(indent + from + label(node) + (again ? ' <span class="dim">(drawn above)</span>' : ''));
+        drawn.add(node.id);
+        if (again || depth > 24) {
+            return;
+        }
+
+        const children = [];
+        node.edges.forEach((edge) => {
+            if (!edge.targets.length) {
+                children.push({ edge: edge, target: null });
+                return;
+            }
+            edge.targets.forEach((id) => children.push({ edge: edge, target: byId.get(id) }));
+        });
+
+        const below = indent === '' ? '' : indent.slice(0, -3) + (indent.slice(-3) === '└─ ' ? '   ' : '│  ');
+        children.forEach((child, index) => {
+            const childIndent = below + (index === children.length - 1 ? '└─ ' : '├─ ');
+            if (!child.target) {
+                const unmet = child.edge.status === 'keyless'
+                    ? 'nothing named'
+                    : child.edge.token + ' (nothing registers it)';
+                lines.push(childIndent + escapeHtml(child.edge.site) + ' -&gt; <span class="unmet">' + escapeHtml(unmet) + '</span>');
+                return;
+            }
+            draw(child.target, childIndent, child.edge.site, path.concat([node.id]), depth + 1);
+        });
+    };
+
+    const roots = graph.roots && graph.roots.length ? graph.roots : graph.nodes.map((node) => node.id);
+    roots.forEach((id) => draw(byId.get(id), '', '', [], 0));
+    graph.nodes.forEach((node) => {
+        if (!drawn.has(node.id)) {
+            draw(node, '', '', [], 0);
+        }
+    });
+    (graph.cycles || []).forEach((cycle) => {
+        lines.push('<span class="cycle">Cycle: ' + escapeHtml(cycle) + '</span>');
+    });
+
+    return '<details class="graph" open><summary>Dependency graph</summary><pre>'
+        + lines.join('\n')
+        + '</pre></details>';
 }
 
 function escapeHtml(value) {
